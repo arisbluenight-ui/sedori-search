@@ -1,0 +1,8 @@
+﻿brand,auto_discovered_brand,source_site,source_title,source_price,source_url,mercari_sold_median,mercari_sold_avg,mercari_sample_count,estimated_sale_price,platform_fee,estimated_shipping,gross_profit,profit_rate,target_category,color_detected,popularity_color_hint,matched_keywords,note
+TOD'S,False,メルカリ,✨美品✨ TOD'S トッズ パンプス バックル 黒ストーン付 サイズ37,8500,https://jp.mercari.com/item/m39793413841,20400,28305,5,43862,4386,520,30456,3.5831,バッグ,black,red,"s,tod,トッズ","類似売り切れ2件ベースで推定 / 要目視確認(mercari_sample_count=5, 類似件数=2)"
+POLENE,False,メルカリ,ポレーヌ Polene Neuf ブラック 風ハンドバッグ,3700,https://jp.mercari.com/item/m84946951411,38500,39298,11,35900,3590,750,27860,7.5297,バッグ,black,brown,"polene,ポレーヌ",類似売り切れ5件ベースで推定
+ANTEPRIMA,False,メルカリ,ANTEPRIMA MISTO バッグの内ポケット,800,https://jp.mercari.com/item/m62889198362,11200,11725,8,19000,1900,750,15550,19.4375,バッグ,unknown,metallic,anteprima,類似売り切れ5件ベースで推定
+PORTER,False,メルカリ,PORTER ブラック ポーチ,8500,https://jp.mercari.com/item/m29417667513,6000,8756,11,25900,2590,520,14290,1.6812,小物,black,black,"porter,ブラック,black",類似売り切れ1件ベースで推定 / 要目視確認(類似件数=1)
+TOD'S,False,メルカリ,✨良品✨TOD'S トッズ レザー ハンドバッグ ブラック,10500,https://jp.mercari.com/item/m80345941298,20400,28305,5,27100,2710,750,13140,1.2514,バッグ,black,red,"s,tod,トッズ,ハンドバッグ,レザー",類似売り切れ4件ベースで推定 / 要目視確認(mercari_sample_count=5)
+MARNI,False,メルカリ,MARNI 二つ折り財布 グリーン/ホワイト,6600,https://jp.mercari.com/item/m85655005021,17625,14925,6,21000,2100,210,12090,1.8318,財布,green/white,white,"marni,二つ折り財布,green","類似売り切れ1件ベースで推定 / 要目視確認(mercari_sample_count=6, 類似件数=1)"
+土屋鞄,False,メルカリ,土屋鞄 レザー ボディバッグ ブラウン,9800,https://jp.mercari.com/item/m82282815507,24000,23993,11,24000,2400,750,11050,1.1276,バッグ,brown,brown,"ブラウン,brown",類似売り切れ1件ベースで推定 / 要目視確認(類似件数=1)
