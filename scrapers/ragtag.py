@@ -48,7 +48,6 @@ class RagtagScraper(PlaywrightScraper):
             html = self.fetch_html_http(self.build_search_url(brand))
             cards = self.parse_cards(html, ["div.search-result__item"])[: self.config.max_items]
             listings: list[Listing] = []
-            detail_page_count = 0
             for card in cards:
                 brand_label = self.pick_text(card, [".search-result__name-brand"])
                 if brand_label and not self.brand_matches(brand, brand_label):
@@ -60,19 +59,14 @@ class RagtagScraper(PlaywrightScraper):
                 if item_url.startswith("/"):
                     item_url = f"https://www.ragtag.jp{item_url}"
 
-                availability_status = self.fetch_availability_status(item_url)
-                detail_page_count += 1
-                listing = self.make_listing(
-                    brand,
-                    title,
-                    price_text,
-                    item_url,
-                    metadata={"availability_status": availability_status},
-                )
+                # リストページの SOLDOUT バッジを在庫なし判定に使う（詳細ページ不要）
+                is_soldout = bool(card.select_one("span.m-icon-soldout"))
+                metadata = {"availability_status": "SOLD OUT"} if is_soldout else None
+                listing = self.make_listing(brand, title, price_text, item_url, metadata=metadata)
                 if listing and listing.price <= self.config.max_source_price:
                     listings.append(listing)
 
-            self.complete_search_stats(listings, search_result_count=len(cards), detail_page_count=detail_page_count)
+            self.complete_search_stats(listings, search_result_count=len(cards))
             if not listings:
                 logger.warning("[RAGTAG] %s の取得件数は0件です", brand)
             return listings

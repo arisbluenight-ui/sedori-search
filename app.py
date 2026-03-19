@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from analyzer import BrandAnalysisResult, Listing, analyze_brand, discover_additional_brands, save_results
-from config import OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, ScraperConfig
+from config import BRAND_ALIASES, OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, ScraperConfig
 from scrapers import (
     AlluScraper,
     BrandearScraper,
@@ -107,6 +107,9 @@ def collect_brand_market_data(
     source_scrapers: list,
 ) -> tuple[list[Listing], list[Listing], dict[str, dict]]:
     sold_items = mercari.search(brand, sold=True)
+    for alias in BRAND_ALIASES.get(brand, []):
+        alias_sold = mercari.search(alias, sold=True)
+        sold_items = sold_items + alias_sold
     source_items: list[Listing] = []
     site_stats: dict[str, dict] = {}
     for scraper in source_scrapers:
@@ -114,6 +117,28 @@ def collect_brand_market_data(
         source_items.extend(items)
         site_stats[scraper.site_name] = dict(scraper.last_search_stats or {})
     return sold_items, source_items, site_stats
+
+
+_ANSI_RED    = "\033[91m"
+_ANSI_YELLOW = "\033[93m"
+_ANSI_GRAY   = "\033[90m"
+_ANSI_GREEN  = "\033[92m"
+_ANSI_BOLD   = "\033[1m"
+_ANSI_RESET  = "\033[0m"
+
+
+def profit_label(gross_profit: int) -> str:
+    return f"{_ANSI_GREEN}{_ANSI_BOLD}利益+{gross_profit:,}円{_ANSI_RESET}"
+
+_RANK_LABEL = {
+    "honmei": f"{_ANSI_RED}【本命】{_ANSI_RESET}",
+    "hold":   f"{_ANSI_YELLOW}【保留】{_ANSI_RESET}",
+    "skip":   f"{_ANSI_GRAY}【見送】{_ANSI_RESET}",
+}
+
+
+def rank_label(rank: str) -> str:
+    return _RANK_LABEL.get(rank, f"【{rank}】")
 
 
 def summarize_to_console(text: str) -> None:
@@ -272,26 +297,36 @@ def build_final_summary(
         if site_counter:
             site_summary = " / ".join(f"{site} {count}件" for site, count in sorted(site_counter.items(), key=lambda item: (-item[1], item[0])))
             lines.append(f"- 候補が出たサイト: {site_summary}")
+        if rows:
+            first = rows[0]
+            color_parts: list[str] = []
+            for i in [1, 2, 3]:
+                color = first.get(f"popularity_color_hint_top{i}", "unknown")
+                count_val = int(first.get(f"popularity_color_top{i}_count", 0))
+                ratio_val = float(first.get(f"popularity_color_top{i}_ratio", 0.0))
+                if color and color != "unknown" and count_val > 0:
+                    color_parts.append(f"{color} {count_val}件({ratio_val:.0%})")
+            if color_parts:
+                lines.append(f"- 人気色: {' / '.join(color_parts)}")
         lines.append(f"- 本命: {len(honmei)}件")
         for row in honmei[:3]:
             lines.append(
-                f"  {row['source_title']} | {row['source_site']} | 仕入¥{row['source_price']:,} | "
-                f"利益+¥{row['gross_profit']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
+                f"  {rank_label('honmei')} {row['source_title']}  {profit_label(row['gross_profit'])}"
+                f" | {row['source_site']} | 仕入¥{row['source_price']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
             )
         lines.append(f"- 保留: {len(hold)}件")
         for row in hold[:3]:
             lines.append(
-                f"  {row['source_title']} | {row['source_site']} | 仕入¥{row['source_price']:,} | "
-                f"利益+¥{row['gross_profit']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
+                f"  {rank_label('hold')} {row['source_title']}  {profit_label(row['gross_profit'])}"
+                f" | {row['source_site']} | 仕入¥{row['source_price']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
             )
         lines.append("")
 
     lines.append("本命・保留の中から gross_profit 上位5件:")
     for row in df.head(5).to_dict("records"):
-        label = "本命" if row["candidate_rank"] == "honmei" else "保留"
         lines.append(
-            f"- {label} | {row['brand']} | {row['source_title']} | {row['source_site']} | "
-            f"仕入¥{row['source_price']:,} | 利益+¥{row['gross_profit']:,}"
+            f"  {rank_label(row['candidate_rank'])} {row['brand']} | {row['source_title']}  "
+            f"{profit_label(row['gross_profit'])} | {row['source_site']} | 仕入¥{row['source_price']:,}"
         )
 
     lines.extend(
@@ -374,6 +409,16 @@ def run() -> int:
         output_path_text = str(output_path)
     summary = build_final_summary(final_rows, brand_site_stats, len(analyzed_brands), auto_brand_count, output_path_text)
     summarize_to_console(summary)
+
+    honmei_count = sum(1 for row in final_rows if row["candidate_rank"] == "honmei")
+    hold_count = sum(1 for row in final_rows if row["candidate_rank"] == "hold")
+    total_profit = sum(row["gross_profit"] for row in final_rows)
+    print("\n========================================")
+    print(f"　利益候補　{len(final_rows)} 件")
+    print(f"　本命　　　{honmei_count} 件")
+    print(f"　保留　　　{hold_count} 件")
+    print(f"　想定利益　¥{total_profit:,}")
+    print("========================================\n")
     return 0
 
 

@@ -59,7 +59,11 @@ class MercariScraper(PlaywrightScraper):
     def search(self, brand: str, sold: bool = False) -> list[Listing]:
         url = self.build_search_url(brand, sold=sold)
         try:
-            html = self.fetch_html(url)
+            html = self.fetch_html_with_options(
+                url,
+                wait_for_selectors=["li[data-testid='item-cell']", "div[data-testid='item-cell']"],
+                selector_timeout_ms=12000,
+            )
             cards = self.parse_cards(html, self._card_selectors())[: self.config.max_items]
             listings: list[Listing] = []
             for card in cards:

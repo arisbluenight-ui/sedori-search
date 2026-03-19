@@ -249,10 +249,23 @@ def evaluate_color_alignment(
     popularity_color_list = [normalize_text(color) for color in popularity_colors if color and color != "unknown"]
     popularity_band_list = [normalize_text(band) for band in popularity_bands if band and band != "unknown"]
 
-    if set(detected_color_list) & set(popularity_color_list):
-        return "strong", "売れ筋上位色と一致"
-    if set(detected_band_list) & set(popularity_band_list):
-        return "strong", "売れ筋上位色帯を含む配色"
+    top1_color = popularity_color_list[0] if popularity_color_list else None
+    top1_band = popularity_band_list[0] if popularity_band_list else None
+    top2_color = popularity_color_list[1] if len(popularity_color_list) > 1 else None
+    top2_band = popularity_band_list[1] if len(popularity_band_list) > 1 else None
+
+    # Top1 exact color or band match → strong
+    if top1_color and top1_color in detected_color_list:
+        return "strong", "売れ筋1位色と一致"
+    if top1_band and top1_band in detected_band_list:
+        return "strong", "売れ筋1位色帯と一致"
+
+    # Top2 only match → near (保留)
+    if top2_color and top2_color in detected_color_list:
+        return "near", "売れ筋2位色と一致"
+    if top2_band and top2_band in detected_band_list:
+        return "near", "売れ筋2位色帯と一致"
+
     if any(band in NEUTRAL_COLOR_BANDS for band in detected_band_list):
         return "neutral", "人気色不一致だが落ち着いた定番配色"
     if detected_band_list and all(band in FLASHY_COLOR_BANDS for band in detected_band_list):

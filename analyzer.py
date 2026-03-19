@@ -11,8 +11,10 @@ from rapidfuzz import fuzz
 from config import (
     AMBIGUOUS_BRANDS,
     BAG_KEYWORDS,
+    BRAND_ALIASES,
     COLOR_RULES,
     DISCOVERY_EXCLUDED_TERMS,
+    NO_MODEL_REQUIRED_BRANDS,
     SOURCE_SITES,
     STRICT_MODEL_BRANDS,
     ScraperConfig,
@@ -101,6 +103,12 @@ class SoldStats:
     popularity_color_band_top2: str
     popularity_color_band_top3: str
     sold_titles: list[str]
+    popularity_color_top1_count: int
+    popularity_color_top1_ratio: float
+    popularity_color_top2_count: int
+    popularity_color_top2_ratio: float
+    popularity_color_top3_count: int
+    popularity_color_top3_ratio: float
 
 
 @dataclass(slots=True)
@@ -186,21 +194,45 @@ def build_sold_stats(brand: str, sold_listings: Iterable[Listing]) -> SoldStats:
     sold_items = [item for item in sold_listings if is_target_category(item.title)]
     prices = [item.price for item in sold_items if item.price]
     titles = [item.title for item in sold_items if item.title]
+
+    raw_top_colors = top_common_colors(titles, limit=3)
+    top_colors = (raw_top_colors + ["unknown", "unknown", "unknown"])[:3]
+    raw_top_bands = top_common_color_bands(titles, limit=3)
+    top_bands = (raw_top_bands + ["unknown", "unknown", "unknown"])[:3]
+
+    total_titles = len(titles) or 1
+    color_item_counter: Counter[str] = Counter()
+    for title in titles:
+        for c in set(detect_colors(title)):
+            color_item_counter[c] += 1
+
+    def _count(color: str) -> int:
+        return color_item_counter.get(color, 0) if color != "unknown" else 0
+
+    def _ratio(color: str) -> float:
+        return round(_count(color) / total_titles, 4) if color != "unknown" else 0.0
+
     return SoldStats(
         brand=brand,
         sold_median=safe_median(prices),
         sold_avg=safe_average(prices),
         sample_count=len(prices),
-        popularity_color_hint=most_common_color(titles),
-        popularity_color_hints=top_common_colors(titles, limit=3),
-        popularity_color_hint_top1=(top_common_colors(titles, limit=3) + ["unknown", "unknown", "unknown"])[0],
-        popularity_color_hint_top2=(top_common_colors(titles, limit=3) + ["unknown", "unknown", "unknown"])[1],
-        popularity_color_hint_top3=(top_common_colors(titles, limit=3) + ["unknown", "unknown", "unknown"])[2],
-        popularity_color_bands=top_common_color_bands(titles, limit=3),
-        popularity_color_band_top1=(top_common_color_bands(titles, limit=3) + ["unknown", "unknown", "unknown"])[0],
-        popularity_color_band_top2=(top_common_color_bands(titles, limit=3) + ["unknown", "unknown", "unknown"])[1],
-        popularity_color_band_top3=(top_common_color_bands(titles, limit=3) + ["unknown", "unknown", "unknown"])[2],
+        popularity_color_hint=top_colors[0],
+        popularity_color_hints=raw_top_colors,
+        popularity_color_hint_top1=top_colors[0],
+        popularity_color_hint_top2=top_colors[1],
+        popularity_color_hint_top3=top_colors[2],
+        popularity_color_bands=raw_top_bands,
+        popularity_color_band_top1=top_bands[0],
+        popularity_color_band_top2=top_bands[1],
+        popularity_color_band_top3=top_bands[2],
         sold_titles=titles,
+        popularity_color_top1_count=_count(top_colors[0]),
+        popularity_color_top1_ratio=_ratio(top_colors[0]),
+        popularity_color_top2_count=_count(top_colors[1]),
+        popularity_color_top2_ratio=_ratio(top_colors[1]),
+        popularity_color_top3_count=_count(top_colors[2]),
+        popularity_color_top3_ratio=_ratio(top_colors[2]),
     )
 
 
@@ -235,13 +267,17 @@ def score_match(source: Listing, sold_item: Listing, brand: str) -> tuple[float,
     source_title = normalize_text(source.title)
     sold_title = normalize_text(sold_item.title)
     normalized_brand = normalize_text(brand)
+    brand_variants = [normalized_brand] + [normalize_text(a) for a in BRAND_ALIASES.get(brand, [])]
     matched_keywords: list[str] = []
 
-    if normalized_brand not in source_title or normalized_brand not in sold_title:
+    source_ok = any(v in source_title for v in brand_variants)
+    sold_ok = any(v in sold_title for v in brand_variants)
+    if not source_ok or not sold_ok:
         return 0.0, matched_keywords, {}
 
+    sold_brand_match = next(v for v in brand_variants if v in sold_title)
     source_profile = build_profile(source, brand)
-    sold_profile = build_profile(sold_item, brand)
+    sold_profile = build_profile(sold_item, sold_brand_match)
     if not source_profile.category or not sold_profile.category or source_profile.category != sold_profile.category:
         return 0.0, matched_keywords, {}
 
@@ -312,7 +348,7 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
     scored: list[tuple[float, Listing, list[str], dict]] = []
     for sold_item in sold_items:
         score, keywords, details = score_match(source, sold_item, brand)
-        if score >= 42:
+        if score >= 35:
             scored.append((score, sold_item, keywords, details))
 
     empty_colors = ["unknown", "unknown", "unknown"]
@@ -343,7 +379,7 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
 
     scored.sort(key=lambda row: row[0], reverse=True)
     top_items = scored[:5]
-    if len(top_items) < 5:
+    if len(top_items) < 3:
         return MatchResult(
             0.0,
             [],
@@ -442,11 +478,12 @@ def classify_candidate_rank(row: dict) -> str:
         return "hold"
     if not row["model_match"]:
         return "hold"
-    if row["color_alignment"] == "strong":
-        return "honmei"
-    if row["color_alignment"] == "neutral" and (row["line_match"] or row["material_match"] or row["size_match"]):
-        return "honmei"
-    if row["color_match"] and (row["line_match"] or row["material_match"] or row["size_match"]):
+    # 仕入れ側にサイズ明記があるが売り切れ側にサイズ一致がない場合は strong を降格
+    effective_alignment = row["color_alignment"]
+    if row.get("source_has_size") and not row["size_match"]:
+        effective_alignment = "neutral"  # パターンA: サイズ不明マッチ → strong 無効
+    # top1 色一致（strong）のみ本命 — top2(near)以下・neutral・unknown は常に hold
+    if effective_alignment == "strong":
         return "honmei"
     return "hold"
 
@@ -486,12 +523,21 @@ def analyze_brand(
             stats.site_excluded_count[site] += 1
             continue
 
+        normalized_brand_upper = normalize_text(brand).upper()
+        if normalized_brand_upper not in {normalize_text(b).upper() for b in NO_MODEL_REQUIRED_BRANDS}:
+            source_profile_check = build_profile(source, brand)
+            if not source_profile_check.model_tokens and not source_profile_check.strict_signature:
+                logger.info("[analyzer] モデル名なしで除外: %s", source.title)
+                stats.non_main_product_excluded_count += 1
+                stats.site_excluded_count[site] += 1
+                continue
+
         if source.price is None or source.price > config.max_source_price:
             stats.site_excluded_count[site] += 1
             continue
 
         match_result = estimate_sale_price(source, filtered_sold_items, sold_stats, brand)
-        if match_result.estimated_price <= 0 or match_result.matched_sold_count < 5:
+        if match_result.estimated_price <= 0 or match_result.matched_sold_count < 3:
             stats.similar_sold_shortage_count += 1
             stats.site_excluded_count[site] += 1
             continue
@@ -551,6 +597,7 @@ def analyze_brand(
             "line_match": match_result.line_match,
             "material_match": match_result.material_match,
             "size_match": match_result.size_match,
+            "source_has_size": bool(extract_size_tokens(source.title)),
             "is_main_item": True,
             "raw_color_text": source_color_features["raw_color_text"],
             "primary_color": source_color_features["primary_color"],
@@ -563,16 +610,20 @@ def analyze_brand(
             "popularity_color_hint": match_result.popularity_color_hint or sold_stats.popularity_color_hint,
             "popularity_color_hint_top1": match_result.popularity_color_hint_top1 or sold_stats.popularity_color_hint_top1,
             "popularity_color_hint_top2": match_result.popularity_color_hint_top2 or sold_stats.popularity_color_hint_top2,
-            "popularity_color_hint_top3": match_result.popularity_color_hint_top3 or sold_stats.popularity_color_hint_top3,
             "popularity_color_hints": ",".join(popularity_color_hints),
             "popularity_color_band_top1": match_result.popularity_color_band_top1 or sold_stats.popularity_color_band_top1,
             "popularity_color_band_top2": match_result.popularity_color_band_top2 or sold_stats.popularity_color_band_top2,
-            "popularity_color_band_top3": match_result.popularity_color_band_top3 or sold_stats.popularity_color_band_top3,
             "popularity_color_bands": ",".join(popularity_color_bands),
             "color_match": match_result.color_match,
             "color_alignment": color_alignment,
             "matched_keywords": ",".join(match_result.matched_keywords),
             "review_required": review_required,
+            "popularity_color_top1_count": sold_stats.popularity_color_top1_count,
+            "popularity_color_top1_ratio": sold_stats.popularity_color_top1_ratio,
+            "popularity_color_top2_count": sold_stats.popularity_color_top2_count,
+            "popularity_color_top2_ratio": sold_stats.popularity_color_top2_ratio,
+            "popularity_color_top3_count": sold_stats.popularity_color_top3_count,
+            "popularity_color_top3_ratio": sold_stats.popularity_color_top3_ratio,
             "note": " / ".join(part for part in row_note_parts if part),
         }
         row["candidate_rank"] = classify_candidate_rank(row)
@@ -666,11 +717,20 @@ def create_summary_lines(
     for brand, group in df.groupby("brand", sort=False):
         sorted_group = group.sort_values(["gross_profit", "profit_rate"], ascending=[False, False])
         max_row = sorted_group.iloc[0]
+        color_parts: list[str] = []
+        for i in [1, 2, 3]:
+            color = max_row.get(f"popularity_color_hint_top{i}", "unknown")
+            count = int(max_row.get(f"popularity_color_top{i}_count", 0))
+            ratio = float(max_row.get(f"popularity_color_top{i}_ratio", 0.0))
+            if color and color != "unknown" and count > 0:
+                color_parts.append(f"{color} {count}件({ratio:.0%})")
+        color_dist_str = " / ".join(color_parts)
         lines.append(f"[{brand}]")
         lines.append(
             f"{brand} は {format_yen(int(group['mercari_sold_median'].median()))}売り切れ相場、"
             f"売り切れ{int(group['mercari_sample_count'].max())}件、利益候補{len(group)}件、"
             f"最大利益{_signed_yen(int(max_row['gross_profit']))} でした。"
+            + (f" 人気色: {color_dist_str}" if color_dist_str else "")
         )
         lines.append("")
     lines.extend(
@@ -716,6 +776,7 @@ def save_results(rows: list[dict], output_path: str) -> pd.DataFrame:
                 "line_match",
                 "material_match",
                 "size_match",
+                "source_has_size",
                 "is_main_item",
                 "raw_color_text",
                 "primary_color",
@@ -728,21 +789,29 @@ def save_results(rows: list[dict], output_path: str) -> pd.DataFrame:
                 "popularity_color_hint",
                 "popularity_color_hint_top1",
                 "popularity_color_hint_top2",
-                "popularity_color_hint_top3",
                 "popularity_color_hints",
                 "popularity_color_band_top1",
                 "popularity_color_band_top2",
-                "popularity_color_band_top3",
                 "popularity_color_bands",
                 "color_match",
                 "color_alignment",
                 "matched_keywords",
                 "review_required",
+                "popularity_color_top1_count",
+                "popularity_color_top1_ratio",
+                "popularity_color_top2_count",
+                "popularity_color_top2_ratio",
+                "popularity_color_top3_count",
+                "popularity_color_top3_ratio",
                 "candidate_rank",
                 "note",
             ]
         )
     else:
         df = df.sort_values(["gross_profit", "profit_rate"], ascending=[False, False]).reset_index(drop=True)
+        # candidate_rank を視認しやすい先頭寄りに並び替え
+        priority_cols = ["candidate_rank", "brand", "source_site", "source_title", "source_price", "gross_profit", "profit_rate"]
+        other_cols = [c for c in df.columns if c not in priority_cols]
+        df = df[priority_cols + other_cols]
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
     return df

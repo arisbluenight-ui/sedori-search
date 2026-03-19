@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from analyzer import Listing
 from config import ScraperConfig
@@ -9,6 +10,10 @@ from utils import encode_query
 
 
 logger = logging.getLogger(__name__)
+
+_PRICE_RE = re.compile(r"[¥￥][\d,]+")
+# Split before condition info (e.g. "商品の状態 : 中古B ¥25,190")
+_CONDITION_RE = re.compile(r"\s*商品の状態\s*[:：].*$")
 
 
 class SecondStreetScraper(PlaywrightScraper):
@@ -25,14 +30,25 @@ class SecondStreetScraper(PlaywrightScraper):
         self.begin_search_stats(brand)
         try:
             html = self.fetch_html(self.build_search_url(brand))
-            cards = self.parse_cards(html, ["li.itemListItem", "div.itemBox", "a[href*='/goods/detail/']"])[: self.config.max_items]
+            # Card: li.itemCard (anchor inside contains title + condition + price as text)
+            cards = self.parse_cards(html, [
+                "li.itemCard",
+                "li[class*='itemCard']",
+                "li.itemListItem",
+            ])[: self.config.max_items]
             listings: list[Listing] = []
             for card in cards:
-                title = self.pick_text(card, ["[class*='itemName']", "[class*='goodsName']", "h3", "a"])
-                price_text = self.pick_text(card, ["[class*='price']", "span"])
-                url = self.pick_attr(card, ["a[href*='/goods/detail/']", "a[href]"], "href")
-                if url.startswith("/"):
-                    url = f"https://www.2ndstreet.jp{url}"
+                anchor = card.select_one("a[href*='/goods/detail/']") or card.select_one("a[href]")
+                if not anchor:
+                    continue
+                href = str(anchor.get("href", ""))
+                url = f"https://www.2ndstreet.jp{href}" if href.startswith("/") else href
+                full_text = anchor.get_text(" ", strip=True)
+                # Extract ¥-prefixed price explicitly (avoids picking up model numbers)
+                price_match = _PRICE_RE.search(full_text)
+                price_text = price_match.group(0) if price_match else ""
+                # Strip condition+price suffix to get clean title
+                title = self.clean_title(_CONDITION_RE.sub("", full_text))
                 listing = self.make_listing(brand, title, price_text, url)
                 if listing and listing.price <= self.config.max_source_price:
                     listings.append(listing)

@@ -9,61 +9,103 @@ OUTPUT_DIR = BASE_DIR / "output"
 
 
 PRIORITY_BRANDS = [
-    "A VACATION",
-    "SUPREME",
-    "LAST CROPS",
-    "Sacai",
-    "TOD'S",
-    "ZANCHETTI AMLETO",
-    "soe",
-    "PATOU",
-    "BURBERRY",
-    "MOTHERHOUSE",
+    # B層（日本発・根強いファン）
     "ペッレモルビダ",
-    "COACH",
-    "JIL SANDER",
-    "Acne Studios",
-    "Porter",
-    "Aeta",
-    "MAISON CANAU",
-    "CANDLER",
-    "Morphee",
-    "PACO RABANNE",
-    "STATE OF ESCAPE",
-    "PORTER",
-    "PORTER CLASSIC",
-    "YOUNG&OLSEN",
-    "MARNI",
-    "JIMMY CHOO",
-    "MONCLER",
-    "ANTEPRIMA",
-    "POLENE",
-    "イッセイミヤケ",
-    "土屋鞄",
-    "FURLA",
-    "Kate Spade",
-    "IL BISONTE",
-    "Longchamp",
-    "TUMI",
-    "LeSportsac",
+    "MOTHERHOUSE",
     "genten",
     "Dakota",
+    "LAST CROPS",
+    "A VACATION",
+    "YOUNG&OLSEN",
+    # C層（セレクト感・上振れ期待）
+    "POLENE",
+    "WANDLER",
+    "VASIC",
+    "Aeta",
+    "MAISON CANAU",
+    "ZANCHETTI AMLETO",
+    "J&M Davidson",
+    "JIL SANDER",
+    "MARNI",
+    "TOD'S",
+    "ANTEPRIMA",
+    "Sacai",
+    "PATOU",
+    "PACO RABANNE",
+    "STATE OF ESCAPE",
+    # 追加ブランド
+    "SOMES",
+    "Mystery Ranch",
+    "TOM FORD",
+    "IACUCCI",
+    "3.1 Phillip Lim",
+    "Pierre Hardy",
+    "万双",
+    # A層（残留分）
+    "Longchamp",
+    "Mulberry",
+    "Anya Hindmarch",
+    "BURBERRY",
+    "MONCLER",
+    "JIMMY CHOO",
+    "TUMI",
 ]
+
+
+BRAND_ALIASES: dict[str, list[str]] = {
+    "Longchamp": ["ロンシャン"],
+    "Kate Spade": ["ケイトスペード"],
+    "FURLA": ["フルラ"],
+    "IL BISONTE": ["イルビゾンテ"],
+    "TUMI": ["トゥミ"],
+    "LeSportsac": ["レスポートサック"],
+    "MONCLER": ["モンクレール"],
+    "JIMMY CHOO": ["ジミーチュウ"],
+    "MARNI": ["マルニ"],
+    "BURBERRY": ["バーバリー"],
+    "COACH": ["コーチ"],
+    "ANTEPRIMA": ["アンテプリマ"],
+    "JIL SANDER": ["ジルサンダー"],
+    "Acne Studios": ["アクネ"],
+    "POLENE": ["ポレーヌ"],
+    "SUPREME": ["シュプリーム"],
+    "PATOU": ["パトゥ"],
+    "PACO RABANNE": ["パコラバンヌ"],
+    "MOTHERHOUSE": ["マザーハウス"],
+    "Sacai": ["サカイ"],
+    "Porter": ["ポーター"],
+    "PORTER": ["ポーター"],
+    "PORTER CLASSIC": ["ポータークラシック"],
+    "Dakota": ["ダコタ"],
+    "genten": ["ゲンテン"],
+    "A.P.C.": ["アーペーセー"],
+    "HUNTING WORLD": ["ハンティングワールド"],
+    "HENDER SCHEME": ["ヘンダースキーム"],
+    "TOPKAPI": ["トプカピ"],
+    "CLEDRAN": ["クレドラン"],
+    "MARGARET HOWELL": ["マーガレットハウエル"],
+    "Mystery Ranch": ["ミステリーランチ"],
+    "TOM FORD": ["トムフォード"],
+    "Glenroyal": ["グレンロイヤル"],
+    "Pierre Hardy": ["ピエールアルディ"],
+    "3.1 Phillip Lim": ["スリーワンフィリップリム"],
+    "SOEUR": ["スール"],
+    "SOMES": ["ソメスサドル", "ソメス"],
+    "万双": ["万双"],
+    "土屋鞄": ["土屋鞄製作所"],
+}
 
 
 SOURCE_SITES = [
     "楽天市場",
     "Yahooショッピング",
     "RAGTAG",
-    "ZOZOUSED",
     "ALLU",
     "BRAND OFF",
     "RECLO",
     "KOMEHYO",
-    "2nd STREET",
     "ベクトルパーク",
     "トレファクファッション",
-    "ブランディア",
     "Rehello by BOOKOFF",
 ]
 
@@ -94,6 +136,22 @@ EXCLUDED_CANDIDATE_TERMS = {
     "本体以外",
     "ジャンク",
     "難あり",
+    # 靴・シューズ類
+    "靴",
+    "シューズ",
+    "サンダル",
+    "ミュール",
+    "スニーカー",
+    "ブーツ",
+    "パンプス",
+    "ヒール",
+    "shoes",
+    "sneakers",
+    "boots",
+    "sandals",
+    "pumps",
+    "loafers",
+    "mules",
 }
 
 
@@ -290,13 +348,13 @@ DEFAULT_HEADERS = {
 
 
 COLOR_RULES = {
-    "black": ["black", "blk", "noir", "nero", "ブラック", "黒"],
-    "white": ["white", "ivory", "off white", "offwhite", "ホワイト", "白", "アイボリー", "オフホワイト", "生成り"],
+    "black": ["black", "blk", "bk", "noir", "nero", "ブラック", "黒"],
+    "white": ["white", "wht", "wh", "ivory", "off white", "offwhite", "ホワイト", "白", "アイボリー", "オフホワイト", "生成り"],
     "beige": ["beige", "greige", "taupe", "ベージュ", "グレージュ", "エトープ"],
-    "brown": ["brown", "camel", "cognac", "ブラウン", "茶", "キャメル", "コニャック"],
-    "blue": ["navy", "indigo", "blue", "ネイビー", "ブルー", "青", "インディゴ"],
+    "brown": ["brown", "brw", "bro", "brn", "camel", "cognac", "ブラウン", "茶", "キャメル", "コニャック"],
+    "blue": ["navy", "nvy", "nv", "indigo", "blue", "ネイビー", "ブルー", "青", "インディゴ"],
     "green": ["green", "khaki", "olive", "グリーン", "緑", "カーキ", "オリーブ"],
-    "red": ["red", "bordeaux", "wine", "レッド", "赤", "ボルドー", "ワイン"],
+    "red": ["red", "rd", "bordeaux", "wine", "レッド", "赤", "ボルドー", "ワイン"],
     "pink": ["pink", "ピンク"],
     "yellow": ["yellow", "イエロー", "黄", "マスタード"],
     "metallic": ["silver", "gold", "シルバー", "ゴールド", "銀", "金"],
@@ -315,6 +373,12 @@ RAW_COLOR_VARIANTS = sorted(
 
 
 STRICT_MODEL_BRANDS = {"POLENE"}
+
+
+# モデル名なし除外ルールの対象外ブランド
+# POLENE は strict_signature で別管理のため除外不要
+# モデル名を使わないブランドが出た場合はここに追加する
+NO_MODEL_REQUIRED_BRANDS: set[str] = {"POLENE"}
 
 
 POLENE_MODEL_PATTERNS = {
@@ -348,7 +412,7 @@ class ScraperConfig:
     mercari_fee_rate: float = 0.10
     min_profit_amount: int = 3000
     final_output_min_profit: int = 10000
-    min_mercari_sample_count: int = 5
+    min_mercari_sample_count: int = 3
     user_specified_brands: bool = False
     full_source_scan: bool = False
     active_source_sites: list[str] = field(default_factory=lambda: PRIMARY_SOURCE_SITES.copy())

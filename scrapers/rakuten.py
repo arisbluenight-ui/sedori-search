@@ -21,7 +21,9 @@ class RakutenScraper(PlaywrightScraper):
         super().__init__(config)
 
     def build_search_url(self, brand: str) -> str:
-        return f"{self.base_url}/{encode_query(brand)}/?max={self.config.max_source_price}"
+        # 楽天はパス形式のURL。アポストロフィ(%27)はWAFで503になるため除去する
+        sanitized = brand.replace("'", "").replace("'", "")
+        return f"{self.base_url}/{encode_query(sanitized)}/?max={self.config.max_source_price}"
 
     def _card_selectors(self) -> list[str]:
         return ["div.searchresultitem", "div.dui-card.searchresultitem", "[data-item-name]", "div[data-rk-itemid]"]

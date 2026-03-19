@@ -19,18 +19,34 @@ class RehelloScraper(PlaywrightScraper):
         super().__init__(config)
 
     def build_search_url(self, brand: str) -> str:
-        return f"{self.base_url}?keyword={encode_query(brand)}"
+        # Shopify search requires type=product&q= (not keyword=)
+        return f"{self.base_url}?type=product&q={encode_query(brand)}"
 
     def search(self, brand: str) -> list[Listing]:
         self.begin_search_stats(brand)
         try:
             html = self.fetch_html(self.build_search_url(brand))
-            cards = self.parse_cards(html, ["li.product-item", "div.product-card", "a[href*='/product/']"])[: self.config.max_items]
+            # Shopify Dawn theme uses li.grid__item as product card container
+            cards = self.parse_cards(html, [
+                "li.grid__item",
+                "li.product-item",
+                "div.card-wrapper",
+            ])[: self.config.max_items]
             listings: list[Listing] = []
             for card in cards:
-                title = self.pick_text(card, ["[class*='product-item__title']", "[class*='product-title']", "h3", "a"])
-                price_text = self.pick_text(card, ["[class*='price']", "span"])
-                url = self.pick_attr(card, ["a[href*='/product/']", "a[href]"], "href")
+                title = self.pick_text(card, [
+                    "[class*='card__heading']",
+                    "[class*='card-title']",
+                    "h3",
+                    "h2",
+                    "a",
+                ])
+                price_text = self.pick_text(card, [
+                    "[class*='price-item--regular']",
+                    "[class*='price']",
+                    "span",
+                ])
+                url = self.pick_attr(card, ["a[href*='/products/']", "a[href]"], "href")
                 if url.startswith("/"):
                     url = f"https://rehello.jp{url}"
                 listing = self.make_listing(brand, title, price_text, url)
