@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from analyzer import BrandAnalysisResult, Listing, analyze_brand, discover_additional_brands, save_results
-from config import BRAND_ALIASES, OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, ScraperConfig
+from config import BRAND_ALIASES, BRAND_SELL_SPEED, OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, STRICT_MODEL_SEARCH_QUERIES, ScraperConfig
 from scrapers import (
     AlluScraper,
     BrandearScraper,
@@ -110,6 +110,9 @@ def collect_brand_market_data(
     for alias in BRAND_ALIASES.get(brand, []):
         alias_sold = mercari.search(alias, sold=True)
         sold_items = sold_items + alias_sold
+    for query in STRICT_MODEL_SEARCH_QUERIES.get(brand, []):
+        model_sold = mercari.search(query, sold=True)
+        sold_items = sold_items + model_sold
     source_items: list[Listing] = []
     site_stats: dict[str, dict] = {}
     for scraper in source_scrapers:
@@ -136,9 +139,17 @@ _RANK_LABEL = {
     "skip":   f"{_ANSI_GRAY}【見送】{_ANSI_RESET}",
 }
 
+_SELL_SPEED_LABEL = {"fast": "高速", "medium": "中速", "slow": "低速"}
+
 
 def rank_label(rank: str) -> str:
     return _RANK_LABEL.get(rank, f"【{rank}】")
+
+
+def sell_speed_suffix(row: dict) -> str:
+    speed = row.get("sell_speed") or BRAND_SELL_SPEED.get(str(row.get("brand", "")), "medium")
+    label = _SELL_SPEED_LABEL.get(speed, "")
+    return f"（{label}）" if label else ""
 
 
 def summarize_to_console(text: str) -> None:
@@ -311,13 +322,13 @@ def build_final_summary(
         lines.append(f"- 本命: {len(honmei)}件")
         for row in honmei[:3]:
             lines.append(
-                f"  {rank_label('honmei')} {row['source_title']}  {profit_label(row['gross_profit'])}"
+                f"  {rank_label('honmei')} {row['source_title']}  {profit_label(row['gross_profit'])}{sell_speed_suffix(row)}"
                 f" | {row['source_site']} | 仕入¥{row['source_price']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
             )
         lines.append(f"- 保留: {len(hold)}件")
         for row in hold[:3]:
             lines.append(
-                f"  {rank_label('hold')} {row['source_title']}  {profit_label(row['gross_profit'])}"
+                f"  {rank_label('hold')} {row['source_title']}  {profit_label(row['gross_profit'])}{sell_speed_suffix(row)}"
                 f" | {row['source_site']} | 仕入¥{row['source_price']:,} | 色一致={'あり' if row['color_match'] else 'なし'}"
             )
         lines.append("")
@@ -326,7 +337,7 @@ def build_final_summary(
     for row in df.head(5).to_dict("records"):
         lines.append(
             f"  {rank_label(row['candidate_rank'])} {row['brand']} | {row['source_title']}  "
-            f"{profit_label(row['gross_profit'])} | {row['source_site']} | 仕入¥{row['source_price']:,}"
+            f"{profit_label(row['gross_profit'])}{sell_speed_suffix(row)} | {row['source_site']} | 仕入¥{row['source_price']:,}"
         )
 
     lines.extend(

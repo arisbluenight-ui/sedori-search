@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup, Tag
 from playwright.async_api import Page, async_playwright
 
 from analyzer import Listing
-from config import DEFAULT_HEADERS, ScraperConfig
+from config import BRAND_ALIASES, DEFAULT_HEADERS, ScraperConfig
 from utils import clean_title_text, detect_availability_status, ensure_sleep, extract_price, normalize_text
 
 
@@ -218,9 +218,9 @@ class PlaywrightScraper(AbstractContextManager):
         actual = self.clean_title(actual_brand)
         if not actual:
             return False
-        expected_normalized = normalize_text(expected_brand)
         actual_normalized = normalize_text(actual)
-        return expected_normalized in actual_normalized or actual_normalized in expected_normalized
+        variants = [normalize_text(expected_brand)] + [normalize_text(a) for a in BRAND_ALIASES.get(expected_brand, [])]
+        return any(v in actual_normalized or actual_normalized in v for v in variants)
 
     def pick_text(self, node: Tag, selectors: Iterable[str]) -> str:
         for selector in selectors:
@@ -249,7 +249,9 @@ class PlaywrightScraper(AbstractContextManager):
         price = extract_price(price_text)
         if not title or price is None or price <= 0:
             return None
-        if normalize_text(brand) not in normalize_text(title):
+        normalized_title = normalize_text(title)
+        brand_variants = [normalize_text(brand)] + [normalize_text(a) for a in BRAND_ALIASES.get(brand, [])]
+        if not any(v in normalized_title for v in brand_variants):
             return None
         payload = dict(metadata or {})
         payload.setdefault("availability_status", detect_availability_status(title))

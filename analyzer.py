@@ -3,7 +3,10 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 from rapidfuzz import fuzz
@@ -12,6 +15,7 @@ from config import (
     AMBIGUOUS_BRANDS,
     BAG_KEYWORDS,
     BRAND_ALIASES,
+    BRAND_SELL_SPEED,
     COLOR_RULES,
     DISCOVERY_EXCLUDED_TERMS,
     NO_MODEL_REQUIRED_BRANDS,
@@ -26,7 +30,9 @@ from utils import (
     detect_colors,
     detect_target_category,
     evaluate_color_alignment,
+    extract_iacucci_model,
     extract_line_tokens,
+    extract_marni_model,
     extract_material_tokens,
     extract_model_tokens,
     extract_polene_model,
@@ -74,6 +80,18 @@ POLENE_SIGNATURE_LABELS = {
     "mokki": "Mokki",
     "toni": "Toni",
 }
+
+IACUCCI_SIGNATURE_LABELS = {
+    "ghibli": "Ghibli",
+    "sorbetto": "Sorbetto",
+}
+
+MARNI_SIGNATURE_LABELS = {
+    "museo": "Museo",
+    "trunk": "Trunk",
+}
+
+ALL_SIGNATURE_LABELS = {**POLENE_SIGNATURE_LABELS, **IACUCCI_SIGNATURE_LABELS, **MARNI_SIGNATURE_LABELS}
 
 
 @dataclass(slots=True)
@@ -236,9 +254,19 @@ def build_sold_stats(brand: str, sold_listings: Iterable[Listing]) -> SoldStats:
     )
 
 
+def _extract_strict_signature(title: str, normalized_brand: str) -> str:
+    if normalized_brand == "polene":
+        return extract_polene_model(title)
+    if normalized_brand == "iacucci":
+        return extract_iacucci_model(title)
+    if normalized_brand == "marni":
+        return extract_marni_model(title)
+    return ""
+
+
 def build_profile(listing: Listing, brand: str) -> ListingProfile:
     normalized_brand = normalize_text(brand)
-    strict_signature = extract_polene_model(listing.title) if normalized_brand == "polene" else ""
+    strict_signature = _extract_strict_signature(listing.title, normalized_brand)
     color_features = extract_color_features(listing.title)
     return ListingProfile(
         category=detect_target_category(listing.title),
@@ -260,7 +288,7 @@ def build_profile(listing: Listing, brand: str) -> ListingProfile:
 def _display_signature(signature: str) -> str:
     if not signature:
         return ""
-    return POLENE_SIGNATURE_LABELS.get(signature, signature.replace("-", " ").title())
+    return ALL_SIGNATURE_LABELS.get(signature, signature.replace("-", " ").title())
 
 
 def score_match(source: Listing, sold_item: Listing, brand: str) -> tuple[float, list[str], dict]:
@@ -478,6 +506,9 @@ def classify_candidate_rank(row: dict) -> str:
         return "hold"
     if not row["model_match"]:
         return "hold"
+    # slow ブランドは color_alignment=strong でも review_required=True 扱い
+    if row.get("sell_speed") == "slow":
+        return "hold"
     # 仕入れ側にサイズ明記があるが売り切れ側にサイズ一致がない場合は strong を降格
     effective_alignment = row["color_alignment"]
     if row.get("source_has_size") and not row["size_match"]:
@@ -506,6 +537,7 @@ def analyze_brand(
 
     stats = BrandAnalysisStats()
     rows: list[dict] = []
+    sell_speed = BRAND_SELL_SPEED.get(brand, "medium")
 
     for source in source_items:
         site = source.site
@@ -618,6 +650,7 @@ def analyze_brand(
             "color_alignment": color_alignment,
             "matched_keywords": ",".join(match_result.matched_keywords),
             "review_required": review_required,
+            "sell_speed": sell_speed,
             "popularity_color_top1_count": sold_stats.popularity_color_top1_count,
             "popularity_color_top1_ratio": sold_stats.popularity_color_top1_ratio,
             "popularity_color_top2_count": sold_stats.popularity_color_top2_count,
@@ -797,6 +830,7 @@ def save_results(rows: list[dict], output_path: str) -> pd.DataFrame:
                 "color_alignment",
                 "matched_keywords",
                 "review_required",
+                "sell_speed",
                 "popularity_color_top1_count",
                 "popularity_color_top1_ratio",
                 "popularity_color_top2_count",

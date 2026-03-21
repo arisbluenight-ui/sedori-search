@@ -15,6 +15,8 @@ from config import (
     BAG_KEYWORDS,
     COLOR_RULES,
     EXCLUDED_CANDIDATE_TERMS,
+    IACUCCI_MODEL_PATTERNS,
+    MARNI_MODEL_PATTERNS,
     MATERIAL_KEYWORDS,
     NON_MAIN_PRODUCT_TERMS,
     POLENE_MODEL_PATTERNS,
@@ -51,7 +53,7 @@ UNAVAILABLE_STATUS_PATTERNS = [
 ]
 
 NEUTRAL_PRIORITY_COLORS = {"black", "brown", "white", "beige"}
-FLASHY_PRIORITY_COLORS = {"red", "blue", "green", "yellow", "pink"}
+FLASHY_PRIORITY_COLORS = {"red", "blue", "green", "yellow", "pink", "purple"}
 COLOR_BAND_MAP = {
     "black": "black",
     "brown": "brown",
@@ -61,11 +63,12 @@ COLOR_BAND_MAP = {
     "pink": "red-pink",
     "blue": "blue-navy",
     "green": "green",
+    "purple": "purple",
     "yellow": "yellow",
     "metallic": "metallic",
 }
 NEUTRAL_COLOR_BANDS = {"black", "brown", "white-beige", "metallic"}
-FLASHY_COLOR_BANDS = {"red-pink", "blue-navy", "green", "yellow"}
+FLASHY_COLOR_BANDS = {"red-pink", "blue-navy", "green", "yellow", "purple"}
 
 
 def ensure_sleep(seconds: float) -> None:
@@ -430,6 +433,24 @@ def extract_polene_model(text: str) -> str:
     normalized = normalized.replace("num ro", "numero").replace("num ero", "numero").replace("num?ro", "numero")
     normalized = re.sub(r"num[^a-z0-9ぁ-んァ-ヶー一-龠]{0,2}ro", "numero", normalized)
     for canonical, variants in POLENE_MODEL_PATTERNS.items():
+        for variant in variants:
+            if normalize_text(variant) in normalized:
+                return canonical
+    return ""
+
+
+def extract_iacucci_model(text: str) -> str:
+    normalized = normalize_text(clean_title_text(text))
+    for canonical, variants in IACUCCI_MODEL_PATTERNS.items():
+        for variant in variants:
+            if normalize_text(variant) in normalized:
+                return canonical
+    return ""
+
+
+def extract_marni_model(text: str) -> str:
+    normalized = normalize_text(clean_title_text(text))
+    for canonical, variants in MARNI_MODEL_PATTERNS.items():
         for variant in variants:
             if normalize_text(variant) in normalized:
                 return canonical

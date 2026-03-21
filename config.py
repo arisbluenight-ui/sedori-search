@@ -41,6 +41,8 @@ PRIORITY_BRANDS = [
     "3.1 Phillip Lim",
     "Pierre Hardy",
     "万双",
+    "Glenroyal",
+    "HERZ",
     # A層（残留分）
     "Longchamp",
     "Mulberry",
@@ -61,6 +63,9 @@ BRAND_ALIASES: dict[str, list[str]] = {
     "LeSportsac": ["レスポートサック"],
     "MONCLER": ["モンクレール"],
     "JIMMY CHOO": ["ジミーチュウ"],
+    "IACUCCI": ["イアクッチ"],
+    "LAST CROPS": ["ラストクロップス", "LASTCROPS"],
+    "A VACATION": ["アヴァケーション"],
     "MARNI": ["マルニ"],
     "BURBERRY": ["バーバリー"],
     "COACH": ["コーチ"],
@@ -87,12 +92,26 @@ BRAND_ALIASES: dict[str, list[str]] = {
     "Mystery Ranch": ["ミステリーランチ"],
     "TOM FORD": ["トムフォード"],
     "Glenroyal": ["グレンロイヤル"],
+    "HERZ": ["ヘルツ"],
     "Pierre Hardy": ["ピエールアルディ"],
     "3.1 Phillip Lim": ["スリーワンフィリップリム"],
     "SOEUR": ["スール"],
     "SOMES": ["ソメスサドル", "ソメス"],
     "万双": ["万双"],
     "土屋鞄": ["土屋鞄製作所"],
+}
+
+
+BRAND_SELL_SPEED: dict[str, str] = {
+    "MOTHERHOUSE": "fast",
+    "LAST CROPS": "fast",
+    "IACUCCI": "fast",
+    "ペッレモルビダ": "medium",
+    "YOUNG&OLSEN": "medium",
+    "Anya Hindmarch": "medium",
+    "VASIC": "slow",
+    "WANDLER": "slow",
+    "J&M Davidson": "slow",
 }
 
 
@@ -356,6 +375,7 @@ COLOR_RULES = {
     "green": ["green", "khaki", "olive", "グリーン", "緑", "カーキ", "オリーブ"],
     "red": ["red", "rd", "bordeaux", "wine", "レッド", "赤", "ボルドー", "ワイン"],
     "pink": ["pink", "ピンク"],
+    "purple": ["purple", "パープル", "紫", "ラベンダー", "lavender"],
     "yellow": ["yellow", "イエロー", "黄", "マスタード"],
     "metallic": ["silver", "gold", "シルバー", "ゴールド", "銀", "金"],
 }
@@ -372,13 +392,13 @@ RAW_COLOR_VARIANTS = sorted(
 )
 
 
-STRICT_MODEL_BRANDS = {"POLENE"}
+STRICT_MODEL_BRANDS = {"POLENE", "IACUCCI", "MARNI"}
 
 
 # モデル名なし除外ルールの対象外ブランド
 # POLENE は strict_signature で別管理のため除外不要
 # モデル名を使わないブランドが出た場合はここに追加する
-NO_MODEL_REQUIRED_BRANDS: set[str] = {"POLENE"}
+NO_MODEL_REQUIRED_BRANDS: set[str] = {"POLENE", "IACUCCI", "MARNI", "A VACATION"}
 
 
 POLENE_MODEL_PATTERNS = {
@@ -394,6 +414,29 @@ POLENE_MODEL_PATTERNS = {
     "nodde": ["nodde"],
     "mokki": ["mokki"],
     "toni": ["toni"],
+}
+
+
+IACUCCI_MODEL_PATTERNS = {
+    "ghibli": ["ギブリ", "ghibli", "GHIBLI"],
+    "sorbetto": ["ソルベット", "sorbetto", "SORBETTO"],
+    "velar": ["ベラール", "VELAR", "velar", "ヴェラール"],
+}
+
+
+MARNI_MODEL_PATTERNS = {
+    "museo": ["ミュゼオ", "museo", "MUSEO"],
+    "trunk": ["トランク", "trunk", "TRUNK", "トランクバッグ"],
+}
+
+
+# STRICT_MODEL_BRANDS のメルカリ追加検索クエリ
+# ブランド名 + モデル代表名 で sold データを補強する
+STRICT_MODEL_SEARCH_QUERIES: dict[str, list[str]] = {
+    "POLENE": ["POLENE numero"],
+    "IACUCCI": ["IACUCCI ギブリ", "IACUCCI ソルベット", "IACUCCI ghibli", "IACUCCI sorbetto", "イアクッチ ギブリ", "イアクッチ ソルベット"],
+    "MARNI": ["MARNI ミュゼオ", "MARNI トランク"],
+    "LAST CROPS": ["LAST CROPS バッグ", "ラストクロップス バッグ"],
 }
 
 
