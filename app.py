@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 
 from analyzer import BrandAnalysisResult, Listing, analyze_brand, discover_additional_brands, save_results
-from config import BRAND_ALIASES, BRAND_SELL_SPEED, OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, STRICT_MODEL_SEARCH_QUERIES, ScraperConfig
+from config import BRAND_ALIASES, BRAND_MAX_PRICE_REVIEW, BRAND_SELL_SPEED, OUTPUT_DIR, PRIMARY_SOURCE_SITES, PRIORITY_BRANDS, SOURCE_SITES, STRICT_MODEL_SEARCH_QUERIES, ScraperConfig
 from scrapers import (
     AlluScraper,
     BrandearScraper,
@@ -63,7 +63,7 @@ def build_config(args: argparse.Namespace) -> ScraperConfig:
         brands=brands,
         deep_dive_brands=deep_dive_brands,
         min_profit_rate=args.min_profit_rate,
-        max_source_price=min(args.max_source_price, 60000),
+        max_source_price=args.max_source_price,
         headless=str_to_bool(args.headless),
         max_items=args.max_items,
         batch_size=max(args.batch_size, 1),

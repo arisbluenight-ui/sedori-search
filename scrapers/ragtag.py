@@ -62,8 +62,17 @@ class RagtagScraper(PlaywrightScraper):
                 # リストページの SOLDOUT バッジを在庫なし判定に使う（詳細ページ不要）
                 is_soldout = bool(card.select_one("span.m-icon-soldout"))
                 metadata = {"availability_status": "SOLD OUT"} if is_soldout else None
+                imgs = card.select("img.search-result__item-photo-img, img[src]")[:3]
+                image_urls = []
+                for img in imgs:
+                    src = img.get("src", "")
+                    if src.startswith("http"):
+                        image_urls.append(src)
+                    elif src.startswith("/"):
+                        image_urls.append("https://www.ragtag.jp" + src)
                 listing = self.make_listing(brand, title, price_text, item_url, metadata=metadata)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
+                    listing.image_urls = image_urls
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

@@ -15,6 +15,8 @@ from config import (
     AMBIGUOUS_BRANDS,
     BAG_KEYWORDS,
     BRAND_ALIASES,
+    BRAND_MAX_PRICE,
+    BRAND_MAX_PRICE_REVIEW,
     BRAND_SELL_SPEED,
     COLOR_RULES,
     DISCOVERY_EXCLUDED_TERMS,
@@ -103,6 +105,7 @@ class Listing:
     site: str
     sold: bool = False
     metadata: dict | None = None
+    image_urls: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -564,9 +567,12 @@ def analyze_brand(
                 stats.site_excluded_count[site] += 1
                 continue
 
-        if source.price is None or source.price > config.max_source_price:
+        brand_max_normal = BRAND_MAX_PRICE.get(brand, config.max_source_price)
+        brand_max_review = BRAND_MAX_PRICE_REVIEW.get(brand, config.max_source_price)
+        if source.price is None or source.price > brand_max_review:
             stats.site_excluded_count[site] += 1
             continue
+        price_review_required = source.price > brand_max_normal
 
         match_result = estimate_sale_price(source, filtered_sold_items, sold_stats, brand)
         if match_result.estimated_price <= 0 or match_result.matched_sold_count < 3:
@@ -582,10 +588,12 @@ def analyze_brand(
             stats.site_excluded_count[site] += 1
             continue
 
-        review_required = sold_stats.sample_count < 8
+        review_required = sold_stats.sample_count < 8 or price_review_required
         row_note_parts = [match_result.note]
-        if review_required:
+        if sold_stats.sample_count < 8:
             row_note_parts.append(f"要目視確認(mercari_sample_count={sold_stats.sample_count})")
+        if price_review_required:
+            row_note_parts.append(f"価格検討枠(仕入¥{source.price:,} > 通常上限¥{brand_max_normal:,})")
         if match_result.strict_validation_note:
             row_note_parts.append(match_result.strict_validation_note)
         if discovery_note:

@@ -25,16 +25,16 @@ class AlluScraper(PlaywrightScraper):
         self.begin_search_stats(brand)
         try:
             html = self.fetch_html(self.build_search_url(brand))
-            cards = self.parse_cards(html, ["a[href*='/products/']", "li.grid__item", "div.card-wrapper"])[: self.config.max_items]
+            cards = self.parse_cards(html, ["div.p-productsSimilar__item"])[: self.config.max_items]
             listings: list[Listing] = []
             for card in cards:
-                title = self.pick_text(card, ["[class*='card__heading']", "[class*='product-item__title']", "h3", "a"])
-                price_text = self.pick_text(card, ["[class*='price']", "span"])
-                url = self.pick_attr(card, ["a[href*='/products/']", "a[href]"], "href")
+                title = self.pick_text(card, ["p.p-productsSimilar__info__ttl", "p[class*='ttl']", "p[class*='name']"])
+                price_text = self.pick_text(card, ["p.p-productsSimilar__info__price", "p[class*='price']"])
+                url = self.pick_attr(card, ["a[href*='/market/items/']", "a[href]"], "href")
                 if url.startswith("/"):
                     url = f"https://ec-jp.allu-official.com{url}"
                 listing = self.make_listing(brand, title, price_text, url)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

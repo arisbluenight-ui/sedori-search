@@ -50,7 +50,7 @@ class VectorParkScraper(PlaywrightScraper):
                 price_match = _PRICE_RE.search(container_text)
                 price_text = price_match.group(0) if price_match else container_text
                 listing = self.make_listing(brand, title, price_text, url)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(anchors))

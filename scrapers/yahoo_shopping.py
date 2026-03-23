@@ -19,7 +19,7 @@ class YahooShoppingScraper(PlaywrightScraper):
         super().__init__(config)
 
     def build_search_url(self, brand: str) -> str:
-        return f"{self.base_url}?p={encode_query(brand)}&X=4&pf=0&pt={self.config.max_source_price}"
+        return f"{self.base_url}?p={encode_query(brand)}&X=4&pf=0&pt={self.config.effective_max_price(brand)}"
 
     def _card_selectors(self) -> list[str]:
         return ["div.SearchResult_SearchResultItem__mJ7vY", "div[class*='SearchResult_SearchResultItem__']"]
@@ -68,7 +68,7 @@ class YahooShoppingScraper(PlaywrightScraper):
                     sold=False,
                     metadata={"availability_status": availability_status},
                 )
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

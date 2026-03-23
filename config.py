@@ -43,6 +43,10 @@ PRIORITY_BRANDS = [
     "万双",
     "Glenroyal",
     "HERZ",
+    # A層（即売れ）
+    "PRADA",
+    "GUCCI",
+    "LOEWE",
     # A層（残留分）
     "Longchamp",
     "Mulberry",
@@ -99,6 +103,34 @@ BRAND_ALIASES: dict[str, list[str]] = {
     "SOMES": ["ソメスサドル", "ソメス"],
     "万双": ["万双"],
     "土屋鞄": ["土屋鞄製作所"],
+    "PRADA": ["プラダ"],
+    "GUCCI": ["グッチ"],
+    "LOEWE": ["ロエベ"],
+}
+
+
+BRAND_MAX_PRICE: dict[str, int] = {
+    # 通常上限: ¥70,000（ここまでは通常フロー）
+    "PRADA":    70_000,
+    "GUCCI":    70_000,
+    "LOEWE":    70_000,
+    "BURBERRY": 70_000,
+    "CELINE":   70_000,
+    "FENDI":    70_000,
+    "GIVENCHY": 70_000,
+    "MIU MIU":  70_000,
+}
+
+# ¥BRAND_MAX_PRICE超〜ここまでは review_required=True で保留出力
+BRAND_MAX_PRICE_REVIEW: dict[str, int] = {
+    "PRADA":    80_000,
+    "GUCCI":    80_000,
+    "LOEWE":    80_000,
+    "BURBERRY": 80_000,
+    "CELINE":   80_000,
+    "FENDI":    80_000,
+    "GIVENCHY": 80_000,
+    "MIU MIU":  80_000,
 }
 
 
@@ -112,6 +144,9 @@ BRAND_SELL_SPEED: dict[str, str] = {
     "VASIC": "slow",
     "WANDLER": "slow",
     "J&M Davidson": "slow",
+    "PRADA": "fast",
+    "GUCCI": "fast",
+    "LOEWE": "fast",
 }
 
 
@@ -151,10 +186,14 @@ EXCLUDED_CANDIDATE_TERMS = {
     "内ポケット",
     "インナーポーチ",
     "付属品",
+    "付属品のみ",
     "バッグインバッグ",
     "本体以外",
     "ジャンク",
     "難あり",
+    "ダストバッグ",
+    "dust bag",
+    "保存袋",
     # 靴・シューズ類
     "靴",
     "シューズ",
@@ -461,3 +500,7 @@ class ScraperConfig:
     active_source_sites: list[str] = field(default_factory=lambda: PRIMARY_SOURCE_SITES.copy())
     deep_dive_brands: list[str] = field(default_factory=list)
     brands: list[str] = field(default_factory=lambda: PRIORITY_BRANDS.copy())
+
+    def effective_max_price(self, brand: str) -> int:
+        """ブランド別仕入れ上限（保留ライン）を返す。未登録ブランドは通常上限。"""
+        return BRAND_MAX_PRICE_REVIEW.get(brand, self.max_source_price)

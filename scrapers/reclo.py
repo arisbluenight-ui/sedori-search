@@ -25,16 +25,16 @@ class RecloScraper(PlaywrightScraper):
         self.begin_search_stats(brand)
         try:
             html = self.fetch_html(self.build_search_url(brand))
-            cards = self.parse_cards(html, ["li.product-grid__item", "div.product-card", "a[href*='/item/']"])[: self.config.max_items]
+            cards = self.parse_cards(html, ["li.grid__item", "div.card-wrapper"])[: self.config.max_items]
             listings: list[Listing] = []
             for card in cards:
-                title = self.pick_text(card, ["[class*='product-card__title']", "[class*='product-item__title']", "h3", "a"])
-                price_text = self.pick_text(card, ["[class*='price']", "span"])
-                url = self.pick_attr(card, ["a[href*='/item/']", "a[href]"], "href")
+                title = self.pick_text(card, ["div.card__information", "div.card-information", "h3", "a"])
+                price_text = self.pick_text(card, ["div.price", "[class*='price']", "span"])
+                url = self.pick_attr(card, ["a[href*='/products/']", "a[href]"], "href")
                 if url.startswith("/"):
                     url = f"https://reclo.jp{url}"
                 listing = self.make_listing(brand, title, price_text, url)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

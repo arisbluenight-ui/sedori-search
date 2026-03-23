@@ -62,7 +62,7 @@ class ZozousedScraper(PlaywrightScraper):
                 if item_url.startswith("/"):
                     item_url = f"https://zozo.jp{item_url}"
                 listing = self.make_listing(brand, title, price_text, item_url)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

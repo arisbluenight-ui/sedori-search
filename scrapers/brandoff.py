@@ -34,7 +34,7 @@ class BrandOffScraper(PlaywrightScraper):
                 if url.startswith("/"):
                     url = f"https://shop.brandoff.co.jp{url}"
                 listing = self.make_listing(brand, title, price_text, url)
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

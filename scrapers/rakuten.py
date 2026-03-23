@@ -23,7 +23,7 @@ class RakutenScraper(PlaywrightScraper):
     def build_search_url(self, brand: str) -> str:
         # 楽天はパス形式のURL。アポストロフィ(%27)はWAFで503になるため除去する
         sanitized = brand.replace("'", "").replace("'", "")
-        return f"{self.base_url}/{encode_query(sanitized)}/?max={self.config.max_source_price}"
+        return f"{self.base_url}/{encode_query(sanitized)}/?max={self.config.effective_max_price(brand)}"
 
     def _card_selectors(self) -> list[str]:
         return ["div.searchresultitem", "div.dui-card.searchresultitem", "[data-item-name]", "div[data-rk-itemid]"]
@@ -67,7 +67,7 @@ class RakutenScraper(PlaywrightScraper):
                     sold=False,
                     metadata={"availability_status": "available"},
                 )
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             if structured_items:
@@ -90,7 +90,7 @@ class RakutenScraper(PlaywrightScraper):
                     sold=False,
                     metadata={"availability_status": availability_status},
                 )
-                if listing and listing.price <= self.config.max_source_price:
+                if listing and listing.price <= self.config.effective_max_price(brand):
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

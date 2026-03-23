@@ -72,8 +72,11 @@ class MercariScraper(PlaywrightScraper):
                 relative_url = self.pick_attr(card, self._link_selectors(), "href")
                 if relative_url and relative_url.startswith("/"):
                     relative_url = f"https://jp.mercari.com{relative_url}"
+                imgs = card.select("img")[:3]
+                image_urls = [u for img in imgs for u in [img.get("src") or img.get("data-src") or ""] if u.startswith("http")]
                 listing = self.make_listing(brand, title, price_text, relative_url, sold=sold)
                 if listing:
+                    listing.image_urls = image_urls
                     listings.append(listing)
             if not listings:
                 logger.warning("[メルカリ] %s の%s取得件数は0件です", brand, "売り切れ" if sold else "販売中")
