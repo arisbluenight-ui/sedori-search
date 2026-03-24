@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>仕入れ候補一覧 — Precision Curator</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&family=DM+Mono:wght@400;500;600&family=Manrope:wght@700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet"/>
+<style>
+/* ── リセット & 変数 ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:        #F3ECD8;
+  --navy:      #0b1e2d;
+  --panel:     #0e2336;
+  --card:      #0d2034;
+  --card-h:    #112540;
+  --border:    #1a3550;
+  --teal:      #2ec4c8;
+  --teal-dim:  rgba(46,196,200,0.15);
+  --gold:      #d4bc8a;
+  --gold-dim:  rgba(212,188,138,0.15);
+  --cream:     #e8eef5;
+  --muted:     #7a9ab0;
+  --danger:    #e06060;
+  --ok:        #5dcc88;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --sidebar-w: 72px;
+}
+html,body{height:100%;font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--cream);-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
+button{cursor:pointer;font-family:inherit;border:none;background:none;color:inherit;}
+
+/* ── スクロールバー ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* ══════════════════════════════
+   PC レイアウト
+══════════════════════════════ */
+.layout{display:flex;min-height:100vh;}
+
+/* サイドバー */
+.sidebar{
+  width:var(--sidebar-w);
+  background:linear-gradient(180deg,#0b1e2d 0%,#0e2336 100%);
+  display:flex;flex-direction:column;align-items:center;
+  padding:20px 0;position:fixed;top:0;left:0;height:100vh;z-index:100;
+  box-shadow:2px 0 12px rgba(0,0,0,0.3);
+}
+.sidebar-logo{font-size:22px;margin-bottom:24px;color:var(--gold);}
+.sidebar-nav{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 14px;border-radius:10px;
+  font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+  color:var(--muted);transition:all 0.18s;width:60px;
+}
+.nav-btn:hover{background:rgba(46,196,200,0.1);color:var(--teal);}
+.nav-btn.active{background:rgba(46,196,200,0.18);color:#ffffff;}
+.nav-btn .icon{font-size:20px;}
+.sidebar-bottom{margin-top:auto;}
+
+/* メインエリア */
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* トップバー */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(11,30,45,0.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  padding:0 28px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.topbar-left{display:flex;align-items:center;gap:20px;}
+.topbar-title{font-family:'Manrope',sans-serif;font-weight:900;font-size:15px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);}
+.stats-bar{
+  display:flex;align-items:center;gap:0;
+  background:rgba(14,35,54,0.8);border:1px solid var(--border);border-radius:30px;
+  font-size:11px;font-weight:700;overflow:hidden;
+}
+.stats-item{
+  padding:5px 14px;border-right:1px solid var(--border);
+  display:flex;align-items:center;gap:5px;
+}
+.stats-item:last-child{border-right:none;}
+.stats-item .label{color:var(--muted);}
+.stats-item .val{color:var(--cream);}
+.stats-item .val.gold{color:var(--gold);}
+.stats-item .val.teal{color:var(--teal);}
+.stats-item .val.danger{color:var(--danger);}
+
+/* タブナビ */
+.topbar-tabs{display:flex;align-items:center;gap:0;}
+.tab-btn{
+  padding:8px 20px;font-size:13px;font-weight:700;font-family:'Manrope',sans-serif;
+  color:rgba(120,160,180,0.7);border-bottom:2px solid transparent;
+  transition:all 0.18s;letter-spacing:0.02em;
+}
+.tab-btn:hover{color:var(--cream);}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* コンテンツエリア */
+.content{flex:1;padding:28px;overflow-y:auto;}
+.content-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+.content-header-left .sub{font-size:11px;font-weight:700;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;}
+.content-header-left h2{font-family:'Noto Serif JP',serif;font-weight:900;font-size:28px;color:#515457;}
+.header-actions{display:flex;gap:10px;align-items:center;}
+.sort-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:8px 14px;font-size:12px;font-weight:700;color:var(--muted);
+  transition:all 0.18s;
+}
+.sort-btn:hover{border-color:var(--teal);color:var(--teal);}
+.refresh-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--gold);color:#1a1200;
+  border-radius:var(--radius-sm);padding:8px 18px;
+  font-size:12px;font-weight:800;font-family:'Manrope',sans-serif;
+  transition:all 0.18s;
+}
+.refresh-btn:hover{background:#ffe066;transform:translateY(-1px);}
+
+/* ── カード（PC横長） ── */
+.card{
+  display:flex;border-radius:var(--radius);overflow:hidden;
+  background:var(--card);border:1px solid var(--border);
+  margin-bottom:14px;
+  transition:transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover{
+  transform:translateY(-2px);
+  border-color:rgba(46,196,200,0.4);
+  box-shadow:0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(46,196,200,0.15);
+}
+.card.honmei{border-left:3px solid var(--teal);}
+.card.honmei:hover{box-shadow:0 8px 32px rgba(0,0,0,0.35),0 0 20px rgba(46,196,200,0.12);}
+.card.horyu{border-left:3px solid var(--gold);}
+.card.horyu:hover{box-shadow:0 8px 32px rgba(0,0,0,0.35),0 0 20px rgba(240,208,96,0.1);}
+.card.kakunin{border-left:3px solid var(--danger);}
+
+/* 画像エリア */
+.card-img{
+  width:180px;min-height:150px;flex-shrink:0;
+  background:linear-gradient(135deg,#0a1a28 0%,#112030 100%);
+  position:relative;overflow:hidden;
+}
+.card-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.card:hover .card-img img{transform:scale(1.06);}
+.card-img .img-placeholder{
+  width:100%;height:100%;min-height:150px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;color:rgba(46,196,200,0.2);
+}
+.sku-badge{
+  position:absolute;top:8px;left:8px;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+  padding:2px 8px;border-radius:4px;
+  font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:rgba(255,255,255,0.7);
+}
+
+/* カード中央 */
+.card-body{flex:1;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;}
+.brand-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.brand-name{font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);}
+.cond-badge{
+  font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;
+  background:rgba(46,196,200,0.15);color:var(--teal);border:1px solid rgba(46,196,200,0.3);
+}
+.cond-badge.s{background:rgba(240,208,96,0.15);color:var(--gold);border-color:rgba(240,208,96,0.3);}
+.cond-badge.b{background:rgba(255,255,255,0.08);color:var(--muted);border-color:rgba(255,255,255,0.15);}
+.card-title{font-family:'Noto Serif JP',serif;font-weight:700;font-size:16px;line-height:1.35;color:#f5f2eb;margin-bottom:8px;}
+.price-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:12px;}
+.price-src{color:var(--muted);}
+.price-src span{color:var(--cream);font-family:'DM Mono',monospace;}
+.arrow-icon{font-size:14px;color:rgba(120,160,180,0.5);}
+.price-dst{color:var(--muted);}
+.price-dst span{color:var(--gold);font-family:'DM Mono',monospace;font-weight:600;}
+
+/* タグ */
+.tags{display:flex;flex-wrap:wrap;gap:5px;}
+.tag{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:3px 9px;border-radius:5px;
+  font-size:9px;font-weight:700;letter-spacing:0.03em;
+}
+.tag-sold{background:rgba(46,196,200,0.1);color:var(--teal);border:1px solid rgba(46,196,200,0.25);}
+.tag-cond{background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid rgba(255,255,255,0.1);}
+.tag-color{background:rgba(46,196,200,0.1);color:#7adfe2;border:1px solid rgba(46,196,200,0.2);}
+.tag-model{background:rgba(46,196,200,0.1);color:#7adfe2;border:1px solid rgba(46,196,200,0.2);}
+.tag-ok{background:rgba(93,204,136,0.1);color:var(--ok);border:1px solid rgba(93,204,136,0.25);}
+.tag-danger{background:rgba(224,96,96,0.12);color:var(--danger);border:1px solid rgba(224,96,96,0.3);}
+.tag-site{background:rgba(14,35,54,0.8);color:var(--muted);border:1px solid var(--border);}
+
+/* カード右（利益・アクション） */
+.card-right{
+  width:260px;flex-shrink:0;
+  background:rgba(255,255,255,0.03);
+  border-left:1px solid var(--border);
+  padding:18px 20px;
+  display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;
+}
+.profit-area{text-align:right;}
+.profit-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2px;}
+.profit-val,.profit-val.big{
+  font-family:'DM Mono',monospace !important;font-weight:600 !important;font-size:26px;
+  color:#f5f2eb !important;letter-spacing:-0.02em;line-height:1;
+}
+.roi-val{font-size:9px;color:rgba(120,160,180,0.5);font-family:'DM Mono',monospace;margin-top:3px;letter-spacing:0.05em;}
+
+/* アクションボタン */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;margin-top:16px;}
+.act-btn{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  padding:8px 6px;border-radius:var(--radius-sm);
+  font-size:10px;font-weight:700;font-family:'Manrope',sans-serif;
+  transition:all 0.15s;
+}
+.act-btn .icon{font-size:13px;}
+.act-btn.primary{background:rgba(255,255,255,0.12);color:var(--cream);}
+.act-btn.primary:hover{background:rgba(255,255,255,0.22);}
+.act-btn.mercari{background:rgba(224,96,96,0.2);color:#f09090;}
+.act-btn.mercari:hover{background:rgba(224,96,96,0.35);}
+.act-btn.hold{background:rgba(255,255,255,0.06);color:var(--muted);}
+.act-btn.hold:hover{background:rgba(255,255,255,0.12);color:var(--cream);}
+.act-btn.reject{background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(120,160,180,0.6);}
+.act-btn.reject:hover{border-color:var(--danger);color:var(--danger);}
+
+/* フィルターFAB */
+.fab{
+  position:fixed;bottom:28px;right:28px;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:30px;padding:10px 20px;
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:700;color:var(--teal);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  transition:all 0.18s;z-index:200;
+}
+.fab:hover{background:var(--card-h);border-color:var(--teal);transform:translateY(-2px);}
+.fab .icon{font-size:18px;transition:transform 0.3s;}
+.fab:hover .icon{transform:rotate(180deg);}
+
+/* ══════════════════════════════
+   スマホ レイアウト (max-width: 767px)
+══════════════════════════════ */
+@media (max-width: 767px) {
+  .sidebar{display:none;}
+  .main{margin-left:0;}
+
+  /* トップバー スマホ */
+  .topbar{padding:0 16px;height:auto;flex-direction:column;align-items:stretch;padding-top:14px;padding-bottom:0;gap:0;}
+  .topbar-left{justify-content:space-between;padding-bottom:10px;}
+  .topbar-title{font-size:18px;}
+  .stats-bar{display:none;}
+  .topbar-tabs{overflow-x:auto;padding-bottom:12px;gap:4px;scrollbar-width:none;}
+  .topbar-tabs::-webkit-scrollbar{display:none;}
+  .tab-btn{padding:7px 18px;font-size:12px;border-bottom:none;border-radius:30px;white-space:nowrap;}
+  .tab-btn.active{background:var(--teal);color:var(--bg);border-bottom:none;}
+
+  /* コンテンツ スマホ */
+  .content{padding:14px;}
+  .content-header{display:none;}
+
+  /* カウンタバッジ（スマホ用） */
+  .sp-counter{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(11,30,45,0.7);border:1px solid var(--border);
+    border-radius:30px;padding:4px 14px;font-size:11px;font-weight:700;
+  }
+  .sp-counter span{color:var(--teal);}
+
+  /* カード スマホ */
+  .card{flex-direction:column;border-left:none;border-top:2px solid transparent;}
+  .card.honmei{border-top-color:var(--teal);border-left:none;}
+  .card.horyu{border-top-color:var(--gold);border-left:none;}
+  .card.kakunin{border-top-color:var(--danger);border-left:none;}
+
+  .card-img{width:100%;height:180px;min-height:unset;}
+  .card-img img{width:100%;height:100%;object-fit:cover;}
+  .card-img .img-placeholder{min-height:120px;}
+
+  .card-body{padding:14px 16px 10px;}
+  .card-title{font-size:15px;}
+  .price-row{font-size:12px;}
+
+  .card-right{
+    width:100%;border-left:none;border-top:1px solid var(--border);
+    flex-direction:row;align-items:center;
+    padding:14px 16px;gap:12px;
+  }
+  .profit-area{text-align:left;flex:1;}
+  .profit-val,.profit-val.big{font-size:28px;color:#f5f2eb !important;}
+
+  /* アクションボタン スマホ（4分割フッター） */
+  .action-grid{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    gap:0;margin-top:0;width:auto;
+    border-top:1px solid var(--border);
+    margin-top:14px;
+  }
+  .act-btn{
+    flex-direction:column;gap:3px;padding:12px 6px;
+    border-radius:0;border-right:1px solid var(--border);font-size:9px;
+  }
+  .act-btn:last-child{border-right:none;}
+  .act-btn .icon{font-size:18px;}
+  .act-btn.primary{background:var(--card);}
+  .act-btn.mercari{background:var(--card);}
+  .act-btn.hold{background:var(--card);}
+  .act-btn.reject{border:none;border-right:1px solid var(--border);background:var(--card);}
+  .act-btn.reject:last-child{border-right:none;}
+
+  /* アクションを card の外に出す */
+  .card-right .action-grid{display:none;}
+  .card-actions-sp{
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--border);
+  }
+
+  /* FAB スマホ */
+  .fab{bottom:80px;right:16px;padding:10px 16px;}
+
+  /* ボトムナビ */
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:rgba(5,15,26,0.96);backdrop-filter:blur(12px);
+    border-top:1px solid var(--border);height:64px;z-index:100;
+  }
+  .bottom-nav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+    color:var(--muted);transition:all 0.15s;
+  }
+  .bottom-nav-btn.active{color:var(--teal);}
+  .bottom-nav-btn .icon{font-size:20px;}
+  .content{padding-bottom:80px;}
+}
+@media (min-width: 768px) {
+  .sp-counter{display:none;}
+  .card-actions-sp{display:none;}
+  .bottom-nav{display:none;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── サイドバー（PC） ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">⚙️</div>
+  <nav class="sidebar-nav">
+    <button class="nav-btn active">
+      <span class="icon material-symbols-outlined">search_insights</span>
+      リサーチ
+    </button>
+    <button class="nav-btn">
+      <span class="icon material-symbols-outlined">history</span>
+      履歴
+    </button>
+    <button class="nav-btn">
+      <span class="icon material-symbols-outlined">filter_list</span>
+      フィルタ
+    </button>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="nav-btn">
+      <span class="icon material-symbols-outlined">settings</span>
+      設定
+    </button>
+  </div>
+</aside>
+
+<!-- ── メイン ── -->
+<div class="main">
+
+  <!-- トップバー -->
+  <header class="topbar">
+    <div class="topbar-left" style="gap:12px">
+      <div class="topbar-title">PRECISION CURATOR</div>
+      <!-- PC: スタッツバー -->
+      <div class="stats-bar">
+        <div class="stats-item"><span class="label">検索対象:</span><span class="val" id="cnt-total">—</span></div>
+        <div class="stats-item"><span class="label">本命:</span><span class="val gold" id="cnt-honmei">—</span></div>
+        <div class="stats-item"><span class="label">保留:</span><span class="val teal" id="cnt-horyu">—</span></div>
+        <div class="stats-item"><span class="label">要確認:</span><span class="val danger" id="cnt-review">—</span></div>
+        <div class="stats-item"><span class="label">表示中:</span><span class="val" id="cnt-showing">—</span></div>
+      </div>
+      <!-- スマホ: コンパクトバッジ -->
+      <div class="sp-counter">本命: <span id="sp-honmei">—</span> 　保留: <span id="sp-horyu">—</span></div>
+      <span id="updated-at" style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;"></span>
+    </div>
+    <!-- タブ -->
+    <nav class="topbar-tabs">
+      <button class="tab-btn active" onclick="filterCards('all',this)">全件</button>
+      <button class="tab-btn" onclick="filterCards('honmei',this)">本命</button>
+      <button class="tab-btn" onclick="filterCards('horyu',this)">保留</button>
+      <button class="tab-btn" onclick="filterCards('kakunin',this)">要確認</button>
+    </nav>
+  </header>
+
+  <!-- コンテンツ -->
+  <main class="content">
+    <div class="content-header">
+      <div class="content-header-left">
+        <div class="sub">マーケットリサーチ</div>
+        <h2>仕入れ候補一覧</h2>
+      </div>
+      <div class="header-actions">
+        <button class="sort-btn" onclick="sortCards()">
+          <span class="material-symbols-outlined" style="font-size:15px">sort</span>
+          <span id="sort-label">利益額順</span>
+        </button>
+        <button class="refresh-btn" onclick="loadCSV()">
+          <span class="material-symbols-outlined" style="font-size:14px">sync</span>
+          データ更新
+        </button>
+      </div>
+    </div>
+
+    <!-- カードコンテナ -->
+    <div id="card-container">
+      <div id="loading" style="text-align:center;padding:80px 0;color:var(--teal)">
+        <div style="font-size:3rem">⏳</div>
+        <div style="margin-top:16px;font-size:1rem;color:var(--cream)">データを読み込み中...</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:6px">
+          CSVを <code style="background:var(--panel);padding:2px 8px;border-radius:4px">results/</code> または
+          同じフォルダに置いてください
+        </div>
+      </div>
+    </div>
+  </main>
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- FAB -->
+<button class="fab" onclick="toggleFilter()">
+  <span class="icon material-symbols-outlined">tune</span>
+  詳細フィルタ
+</button>
+
+<!-- ボトムナビ（スマホ） -->
+<nav class="bottom-nav">
+  <button class="bottom-nav-btn active">
+    <span class="icon material-symbols-outlined">search</span>
+    リサーチ
+  </button>
+  <button class="bottom-nav-btn">
+    <span class="icon material-symbols-outlined">history</span>
+    履歴
+  </button>
+  <button class="bottom-nav-btn">
+    <span class="icon material-symbols-outlined">settings</span>
+    設定
+  </button>
+</nav>
+
+<script>
+// ── データ管理 ──────────────────────────────────────────
+// candidate_rank 英語→日本語マッピング（グローバル）
+const RANK_MAP = {
+  'honmei':'本命', 'hold':'保留', 'review':'要確認',
+  'reject':'除外', 'exclude':'除外',
+  '本命':'本命', '保留':'保留', '要確認':'要確認', '除外':'除外',
+};
+
+let allCards = [];
+let sortMode = 0; // 0=利益額↓ 1=利益率↓ 2=仕入れ価格↑
+const SORT_LABELS = ['利益額順','利益率順','仕入れ価格順'];
+
+function toNum(v) {
+  if (v === undefined || v === null) return 0;
+  return parseFloat(String(v).replace(/[,¥%]/g,'')) || 0;
+}
+
+// ── CSV読み込み ─────────────────────────────────────────
+async function loadCSV() {
+  // data.json を fetch（GitHub Pages / ローカルサーバー共通）
+  const jsonPaths = ['data.json', 'docs/data.json'];
+  let data = [];
+  let updatedAt = '';
+
+  for (const path of jsonPaths) {
+    try {
+      const res = await fetch(path);
+      if (res.ok) {
+        const json = await res.json();
+        data = (json.items || []).map(row => {
+          // candidate_rank を日本語に変換
+          row.candidate_rank = RANK_MAP[row.candidate_rank] || row.candidate_rank || '';
+          return row;
+        });
+        updatedAt = json.updated_at || '';
+        console.log(`✅ data.json 読み込み完了: ${data.length}件 (${path})`);
+        break;
+      }
+    } catch(e) {}
+  }
+
+  if (data.length === 0) {
+    // フォールバック: サンプルデータ
+    console.warn('data.json が見つかりません。サンプルデータを表示します。');
+    data = [
+      { candidate_rank:'保留', brand:'GUCCI', title:'（サンプル）グッチ ショルダーバッグ',
+        source_price:9500, mercari_price:35000, profit:19230, profit_rate:202.4,
+        sold_count:7, source_site:'サンプルサイト', color:'ベージュ',
+        source_url:'#', mercari_url:'#' },
+    ];
+  }
+
+  // 更新日時を表示
+  if (updatedAt) {
+    const el = document.getElementById('updated-at');
+    if (el) el.textContent = `更新: ${updatedAt}`;
+  }
+
+  allCards = data;
+  renderCards(allCards);
+  updateCounts(allCards);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.replace(/"/g,'').trim());
+
+  const ALIASES = {
+    candidate_rank:  ['candidate_rank','rank','判定','候補ランク'],
+    brand:           ['brand','ブランド','Brand'],
+    title:           ['source_title','title','タイトル','商品名','item_name','name','item_title'],
+    source_price:    ['source_price','仕入れ価格','price','source_price_yen'],
+    mercari_price:   ['estimated_sale_price','mercari_price','メルカリ価格','sell_price','mercari_sold_median','mercari_sold_avg'],
+    profit:          ['gross_profit','profit','利益','profit_yen'],
+    profit_rate:     ['profit_rate','利益率','profit_rate_pct'],
+    sold_count:      ['matched_sold_count','sold_count','sold件数','sold_count_text_matched','mercari_sample_count'],
+    source_site:     ['source_site','仕入れサイト','site','site_name','source'],
+    source_url:      ['source_url','仕入れURL','url','item_url','source_item_url'],
+    mercari_url:     ['mercari_url','メルカリURL','mercari_search_url','search_url'],
+    condition_rank:  ['condition_rank','状態ランク','condition','grade','cond'],
+    danger_word:     ['danger_word','危険語','危険ワード','danger_words'],
+    skip_reason:     ['skip_reason','note','除外理由','reason','reject_reason'],
+    model_name:      ['model_signature','model_name','モデル名','model'],
+    color:           ['primary_color','color','カラー','色','color_name'],
+    color_match:     ['color_match','color_alignment','色一致'],
+    sell_speed:      ['sell_speed','販売速度'],
+  };
+
+  // ヘッダーを正規化
+  const colMap = {};
+  for (const [target, cands] of Object.entries(ALIASES)) {
+    for (const c of cands) {
+      const idx = headers.indexOf(c);
+      if (idx >= 0) { colMap[target] = idx; break; }
+    }
+  }
+
+  return lines.slice(1).map(line => {
+    const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
+    const row = {};
+    for (const [key, idx] of Object.entries(colMap)) {
+      row[key] = cols[idx] || '';
+    }
+    // candidate_rank を日本語に正規化
+    if (row.candidate_rank) {
+      row.candidate_rank = RANK_MAP[row.candidate_rank] || row.candidate_rank;
+    }
+    return row;
+  });
+}
+
+// ── カードレンダリング ──────────────────────────────────
+function renderCards(data) {
+  const container = document.getElementById('card-container');
+  if (data.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:80px 0;color:var(--teal)">
+        <div style="font-size:3rem">🔎</div>
+        <div style="margin-top:16px;color:var(--cream)">該当する候補がありません</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = data.map(row => buildCard(row)).join('');
+  document.getElementById('cnt-showing').textContent = data.length;
+}
+
+function buildCard(r) {
+  const rank   = RANK_MAP[r.candidate_rank] || r.candidate_rank || '';
+  const brand  = r.brand || '';
+  const title  = r.title || '（タイトルなし）';
+  const srcP   = toNum(r.source_price);
+  const merP   = toNum(r.mercari_price);
+  const profit = toNum(r.profit);
+  const rate   = toNum(r.profit_rate);
+  const sold   = r.sold_count || '';
+  const site   = r.source_site || '';
+  const cond   = r.condition_rank || '';
+  const danger = r.danger_word || '';
+  const skip   = r.skip_reason || '';
+  const model  = r.model_name || '';
+  const color  = (r.color && r.color !== 'unknown') ? r.color : '';
+  const srcUrl = r.source_url || '#';
+  const merUrl = r.mercari_url || '#';
+
+  // クラス
+  const cls = rank === '本命' ? 'honmei' : rank === '保留' ? 'horyu' : rank === '要確認' ? 'kakunin' : '';
+
+  // 状態バッジスタイル
+  const condCls = cond === 'SS' || cond === 'S' ? 's' : (cond === 'C' || cond === 'D' || cond === 'E' ? 'b' : '');
+
+  // 利益表示
+  const profitSign = profit >= 0 ? '+' : '';
+  const profitClass = profit >= 50000 ? 'profit-val big' : 'profit-val';
+
+  // タグ生成
+  let tags = '';
+  if (sold)  tags += `<span class="tag tag-sold">💹 SOLD ${sold}件</span>`;
+  if (cond)  tags += `<span class="tag tag-cond">📊 状態${cond}</span>`;
+  if (color) tags += `<span class="tag tag-color">🎨 ${color}</span>`;
+  if (model) tags += `<span class="tag tag-model">📌 ${model}</span>`;
+  if (!danger && !skip) tags += `<span class="tag tag-ok">✅ 危険語なし</span>`;
+  if (danger) tags += `<span class="tag tag-danger">⚠️ ${danger}</span>`;
+  if (site)  tags += `<span class="tag tag-site">🏪 ${site}</span>`;
+  const speed = r.sell_speed || '';
+  if (speed === 'fast') tags += `<span class="tag tag-ok">⚡ 回転速め</span>`;
+  if (speed === 'slow') tags += `<span class="tag tag-cond" style="color:var(--muted)">🐢 回転遅め</span>`;
+  const colorMatch = r.color_match || '';
+  if (colorMatch && colorMatch !== 'unknown') tags += `<span class="tag tag-color">🎯 色一致:${colorMatch}</span>`;
+
+  const skipHtml = skip
+    ? `<div style="color:var(--danger);font-size:11px;margin-top:8px;opacity:0.85">📋 ${skip}</div>`
+    : '';
+
+  // アクションボタン（PC/SP共通構造）
+  const actions = `
+    <a href="${srcUrl}" target="_blank" class="act-btn primary">
+      <span class="icon material-symbols-outlined">open_in_new</span>仕入れ元
+    </a>
+    <a href="${merUrl}" target="_blank" class="act-btn mercari">
+      <span class="icon material-symbols-outlined">storefront</span>メルカリ
+    </a>
+    <button class="act-btn hold" onclick="holdCard(this)">
+      <span class="icon material-symbols-outlined">bookmark</span>保留
+    </button>
+    <button class="act-btn reject" onclick="rejectCard(this)">
+      <span class="icon material-symbols-outlined">delete</span>除外
+    </button>
+  `;
+
+  return `
+  <div class="card ${cls}" data-rank="${rank}" data-profit="${profit}" data-rate="${rate}" data-srcprice="${srcP}">
+    <!-- 画像 -->
+    <div class="card-img">
+      <div class="img-placeholder">🛍️</div>
+      ${srcP ? `<div class="sku-badge">${brand.substring(0,3).toUpperCase()}-${String(srcP).slice(-4)}</div>` : ''}
+    </div>
+    <!-- 中央 -->
+    <div class="card-body">
+      <div>
+        <div class="brand-row">
+          <span class="brand-name">${brand}</span>
+          ${cond ? `<span class="cond-badge ${condCls}">状態${cond}</span>` : ''}
+          ${rank === '本命' ? '<span class="cond-badge" style="background:rgba(46,196,200,0.2);color:var(--teal);border-color:rgba(46,196,200,0.4)">⭐ 本命</span>' : ''}
+          ${rank === '保留' ? '<span class="cond-badge" style="background:rgba(240,208,96,0.2);color:var(--gold);border-color:rgba(240,208,96,0.4)">🔖 保留</span>' : ''}
+          ${rank === '要確認' ? '<span class="cond-badge" style="background:rgba(224,96,96,0.2);color:var(--danger);border-color:rgba(224,96,96,0.4)">⚠️ 要確認</span>' : ''}
+        </div>
+        <div class="card-title">${title}</div>
+        <div class="price-row">
+          <span class="price-src">仕入: <span>¥${srcP.toLocaleString()}</span></span>
+          <span class="material-symbols-outlined arrow-icon">arrow_forward</span>
+          <span class="price-dst">売値: <span>¥${merP.toLocaleString()}</span></span>
+        </div>
+      </div>
+      <div>
+        <div class="tags">${tags}</div>
+        ${skipHtml}
+      </div>
+    </div>
+    <!-- 右パネル（PC） -->
+    <div class="card-right">
+      <div class="profit-area">
+        <div class="profit-label">見込み利益</div>
+        <div class="${profitClass}">${profitSign}¥${Math.abs(profit).toLocaleString()}</div>
+        <div class="roi-val">ROI ${rate.toFixed(1)}%</div>
+      </div>
+      <div class="action-grid">${actions}</div>
+    </div>
+    <!-- アクション（SP追加） -->
+    <div class="card-actions-sp" style="display:none">
+      ${actions}
+    </div>
+  </div>`;
+}
+
+// ── フィルター ──────────────────────────────────────────
+function filterCards(type, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  let filtered = allCards;
+  if (type === 'honmei')  filtered = allCards.filter(r => r.candidate_rank === '本命');
+  if (type === 'horyu')   filtered = allCards.filter(r => r.candidate_rank === '保留');
+  if (type === 'kakunin') filtered = allCards.filter(r => r.candidate_rank === '要確認');
+
+  renderCards(filtered);
+  updateCounts(allCards, filtered.length);
+}
+
+// ── ソート ──────────────────────────────────────────────
+function sortCards() {
+  sortMode = (sortMode + 1) % 3;
+  document.getElementById('sort-label').textContent = SORT_LABELS[sortMode];
+
+  const cards = document.querySelectorAll('.card');
+  const container = document.getElementById('card-container');
+  const arr = Array.from(cards);
+
+  arr.sort((a, b) => {
+    if (sortMode === 0) return toNum(b.dataset.profit) - toNum(a.dataset.profit);
+    if (sortMode === 1) return toNum(b.dataset.rate) - toNum(a.dataset.rate);
+    if (sortMode === 2) return toNum(a.dataset.srcprice) - toNum(b.dataset.srcprice);
+  });
+  arr.forEach(c => container.appendChild(c));
+}
+
+// ── カウント更新 ──────────────────────────────────────────
+function updateCounts(data, showing) {
+  const total   = data.length;
+  const honmei  = data.filter(r => r.candidate_rank === '本命').length;
+  const horyu   = data.filter(r => r.candidate_rank === '保留').length;
+  const review  = data.filter(r => r.candidate_rank === '要確認').length;
+  const show    = showing !== undefined ? showing : total;
+
+  document.getElementById('cnt-total').textContent   = total;
+  document.getElementById('cnt-honmei').textContent  = honmei;
+  document.getElementById('cnt-horyu').textContent   = horyu;
+  document.getElementById('cnt-review').textContent  = review;
+  document.getElementById('cnt-showing').textContent = show;
+  document.getElementById('sp-honmei').textContent   = honmei;
+  document.getElementById('sp-horyu').textContent    = horyu;
+}
+
+// ── 保留・除外ボタン動作 ──────────────────────────────────
+function holdCard(btn) {
+  const card = btn.closest('.card');
+  const rank = card.dataset.rank;
+  if (rank === '保留') {
+    // 保留解除→全件に戻す
+    card.dataset.rank = '全件';
+    card.className = card.className.replace(/honmei|horyu|kakunin/g,'').trim() + ' card';
+    showToast('保留を解除しました');
+  } else {
+    card.dataset.rank = '保留';
+    card.className = card.className.replace(/honmei|horyu|kakunin/g,'').trim() + ' card horyu';
+    showToast('🔖 保留にしました');
+  }
+  updateCounts(allCards);
+}
+
+function rejectCard(btn) {
+  const card = btn.closest('.card');
+  card.style.transition = 'opacity 0.35s, transform 0.35s';
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(40px)';
+  setTimeout(() => {
+    card.remove();
+    // allCardsからも除外
+    const idx = allCards.findIndex(r => r._id === card.dataset.id);
+    if (idx >= 0) allCards.splice(idx, 1);
+    updateCounts(allCards);
+  }, 350);
+  showToast('🗑️ 除外しました');
+}
+
+// ── トースト通知 ──────────────────────────────────────────
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:#1a3d55;border:1px solid var(--teal);border-radius:8px;
+      padding:8px 20px;font-size:12px;font-weight:700;color:var(--cream);
+      opacity:0;transition:all 0.25s;z-index:9999;pointer-events:none;
+      white-space:nowrap;
+    `;
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 1800);
+}
+
+// ── フィルタドロワー ──────────────────────────────────────
+let filterOpen = false;
+function toggleFilter() {
+  filterOpen = !filterOpen;
+  let drawer = document.getElementById('filter-drawer');
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'filter-drawer';
+    drawer.style.cssText = `
+      position:fixed;bottom:0;left:0;right:0;
+      background:#0e2336;border-top:1px solid var(--border);
+      padding:20px 24px 32px;z-index:500;
+      transform:translateY(100%);transition:transform 0.3s;
+      border-radius:16px 16px 0 0;
+      box-shadow:0 -4px 24px rgba(0,0,0,0.5);
+    `;
+    drawer.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-weight:700;font-size:14px;color:var(--cream)">🎛️ 詳細フィルタ</span>
+        <button onclick="toggleFilter()" style="color:var(--muted);font-size:20px;background:none;border:none;cursor:pointer">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+        ${['本命のみ','保留のみ','利益額↓','利益率↓','仕入れ価格↑','全件表示'].map(label => `
+          <button onclick="applyQuickFilter('${label}')" style="
+            background:var(--card);border:1px solid var(--border);border-radius:8px;
+            padding:10px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;
+            transition:all 0.15s;
+          " onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+             onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'"
+          >${label}</button>
+        `).join('')}
+      </div>
+    `;
+    document.body.appendChild(drawer);
+  }
+  setTimeout(() => {
+    drawer.style.transform = filterOpen ? 'translateY(0)' : 'translateY(100%)';
+  }, 10);
+}
+
+function applyQuickFilter(label) {
+  toggleFilter();
+  if (label === '本命のみ')   { document.querySelectorAll('.tab-btn')[1].click(); return; }
+  if (label === '保留のみ')   { document.querySelectorAll('.tab-btn')[2].click(); return; }
+  if (label === '全件表示')   { document.querySelectorAll('.tab-btn')[0].click(); return; }
+  if (label === '利益額↓')   { sortMode = -1; sortCards(); return; }
+  if (label === '利益率↓')   { sortMode = 0;  sortCards(); return; }
+  if (label === '仕入れ価格↑') { sortMode = 1; sortCards(); return; }
+}
+
+
+// ── 保留・除外ボタン動作 ──────────────────────────────────
+
+
+
+function applyResponsive() {
+  const isSP = window.innerWidth < 768;
+  document.querySelectorAll('.card-actions-sp').forEach(el => {
+    el.style.display = isSP ? 'grid' : 'none';
+  });
+  // SP時はcard-rightのaction-gridを非表示
+  document.querySelectorAll('.card-right .action-grid').forEach(el => {
+    el.style.display = isSP ? 'none' : 'grid';
+  });
+}
+
+window.addEventListener('resize', applyResponsive);
+
+// ── 初期化 ──────────────────────────────────────────────
+loadCSV().then(applyResponsive);
+</script>
+</body>
+</html>
