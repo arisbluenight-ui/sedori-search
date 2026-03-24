@@ -210,6 +210,24 @@ EXCLUDED_CANDIDATE_TERMS = {
     "pumps",
     "loafers",
     "mules",
+    # ベルト・アイウェア・アクセサリー系
+    "ベルト",
+    "belt",
+    "サングラス",
+    "sunglass",
+    "sunglasses",
+    "メガネ",
+    "眼鏡",
+    "glasses",
+    "アイウェア",
+    "eyewear",
+    "ネクタイ",
+    "tie",
+    "スカーフ",
+    "scarf",
+    "帽子",
+    "hat",
+    "cap",
 }
 
 
