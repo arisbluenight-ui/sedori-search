@@ -279,6 +279,7 @@ def build_profile(listing: Listing, brand: str) -> ListingProfile:
     normalized_brand = normalize_text(brand)
     strict_signature = _extract_strict_signature(listing.title, normalized_brand)
     color_features = extract_color_features(listing.title)
+    brand_parts = {t for t in re.findall(r"[a-z0-9]+", normalized_brand) if len(t) >= 5}
     return ListingProfile(
         category=detect_target_category(listing.title),
         colors=list(color_features["detected_colors"]),
@@ -288,7 +289,7 @@ def build_profile(listing: Listing, brand: str) -> ListingProfile:
         secondary_colors=list(color_features["secondary_colors"]),
         primary_color_band=str(color_features["primary_color_band"]),
         secondary_color_bands=list(color_features["secondary_color_bands"]),
-        model_tokens=set(extract_model_tokens(listing.title)),
+        model_tokens=set(extract_model_tokens(listing.title)) - brand_parts,
         line_tokens=set(extract_line_tokens(listing.title, brand)),
         material_tokens=set(extract_material_tokens(listing.title)),
         size_tokens=set(extract_size_tokens(listing.title)),
