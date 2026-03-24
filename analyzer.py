@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 from rapidfuzz import fuzz
 
+from condition_filter import (
+    normalize_condition,
+    extract_condition_from_text,
+    check_description_words,
+    ALLOWED_RANKS,
+    REVIEW_RANKS,
+    REJECT_RANKS,
+)
 from config import (
     AMBIGUOUS_BRANDS,
     BAG_KEYWORDS,
@@ -667,6 +675,39 @@ def analyze_brand(
             "popularity_color_top3_ratio": sold_stats.popularity_color_top3_ratio,
             "note": " / ".join(part for part in row_note_parts if part),
         }
+        # ── 状態ランクフィルター（condition_filter） ──
+        source_title_text = str(source.title or "")
+        source_site_name  = str(getattr(source, "site_name", "") or "")
+
+        # サイト別ランク正規化（ラベル直接マッチ）
+        cond_rank = normalize_condition(source_site_name, source_title_text)
+        # ラベルが取れなければ説明文から推定
+        if not cond_rank:
+            cond_rank = extract_condition_from_text(source_site_name, source_title_text)
+
+        row["condition_rank"] = cond_rank or ""
+
+        # 危険語チェック
+        danger_level = check_description_words(source_title_text)
+        row["danger_word"] = source_title_text if danger_level != "allow" else ""
+
+        # 状態ランクによる除外・保留
+        if cond_rank in REJECT_RANKS:
+            row["review_required"] = True
+            row["note"] = f"状態除外({cond_rank}) / " + row.get("note", "")
+        elif cond_rank in REVIEW_RANKS:
+            row["review_required"] = True
+            row["note"] = f"状態保留({cond_rank}) / " + row.get("note", "")
+
+        # 危険語による除外
+        if danger_level == "reject":
+            row["review_required"] = True
+            row["note"] = f"危険語(reject) / " + row.get("note", "")
+        elif danger_level == "review":
+            row["review_required"] = True
+            row["note"] = f"要確認語(review) / " + row.get("note", "")
+        # ── ここまで condition_filter ──
+
         row["candidate_rank"] = classify_candidate_rank(row)
 
         stats.primary_candidate_count += 1
