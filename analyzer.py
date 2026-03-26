@@ -597,10 +597,13 @@ def analyze_brand(
             stats.site_excluded_count[site] += 1
             continue
 
-        review_required = sold_stats.sample_count < 8 or price_review_required
+        sold_count_review_required = match_result.matched_sold_count < 5
+        review_required = sold_stats.sample_count < 8 or price_review_required or sold_count_review_required
         row_note_parts = [match_result.note]
         if sold_stats.sample_count < 8:
             row_note_parts.append(f"要目視確認(mercari_sample_count={sold_stats.sample_count})")
+        if sold_count_review_required:
+            row_note_parts.append(f"要目視確認(matched_sold_count={match_result.matched_sold_count})")
         if price_review_required:
             row_note_parts.append(f"価格検討枠(仕入¥{source.price:,} > 通常上限¥{brand_max_normal:,})")
         if match_result.strict_validation_note:

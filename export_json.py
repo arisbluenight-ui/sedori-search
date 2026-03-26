@@ -1,6 +1,8 @@
 import glob
 import json
 import os
+import urllib.parse
+from datetime import date
 import pandas as pd
 from pathlib import Path
 
@@ -97,6 +99,78 @@ def export_latest_csv_to_json():
         }, f, ensure_ascii=False, indent=2)
 
     print(f"OK: {len(records)}件 -> {out_path} に出力しました")
+    export_honmei_summary(df)
+
+def export_honmei_summary(df: pd.DataFrame) -> None:
+    honmei_df = df[df["candidate_rank"] == "本命"].copy()
+    if honmei_df.empty:
+        print("本命候補が0件のため honmei_summary.txt はスキップ")
+        return
+
+    today = date.today().strftime("%Y/%m/%d")
+    lines = [
+        f"【本命候補リスト - {today}】",
+        "メルカリで以下の商品のSOLD件数と画像確認をお願いします。",
+        "各商品について「SOLD2件以上あるか」「画像が一致するか」を確認してください。",
+        "",
+    ]
+
+    for i, (_, item) in enumerate(honmei_df.iterrows(), 1):
+        brand     = str(item.get("brand", "") or "")
+        title     = str(item.get("title", "") or item.get("source_title", "") or "")
+        model     = str(item.get("model_name", "") or "")
+        color     = str(item.get("color", "") or "")
+        site      = str(item.get("source_site", "") or "")
+        src_p     = int(item.get("source_price", 0) or 0)
+        profit    = int(item.get("profit", 0) or 0)
+        src_url   = str(item.get("source_url", "") or "")
+        mer_price = int(item.get("mercari_price", 0) or 0)
+
+        search_keywords = " ".join(
+            x for x in [
+                brand,
+                model if model and model != "unknown" else "",
+                color if color and color != "unknown" else "",
+                item.get("target_category") or "",
+            ] if x
+        )
+
+        encoded = urllib.parse.quote(search_keywords)
+        mercari_search = f"https://jp.mercari.com/search?keyword={encoded}&status=sold_out"
+
+        lines += [
+            f"{'='*50}",
+            f"【{i}】{brand}",
+            f"",
+            f"■ 商品情報",
+            f"  タイトル : {title[:50]}",
+            f"  推定モデル: {model if model and model != 'unknown' else '不明（要確認）'}",
+            f"  色      : {color if color and color != 'unknown' else '不明'}",
+            f"  素材    : {item.get('material') or '不明'}",
+            f"  形状    : {item.get('target_category') or '不明'}",
+            f"  仕入れ先: {site}",
+            f"  仕入値  : ¥{src_p:,} → 利益: +¥{profit:,}",
+            f"  仕入URL : {src_url}",
+            f"",
+            f"■ メルカリSOLD確認用",
+            f"  検索キーワード: {search_keywords}",
+            f"  SOLD検索URL : {mercari_search}",
+            f"",
+            f"■ 確認ポイント（Claude in Chromeへ貼り付け用）",
+            f"  以下をメルカリで検索し確認してください：",
+            f"  「{search_keywords or f'{brand} {title[:25]}'}」",
+            f"  ① SOLD件数が2件以上あるか",
+            f"  ② 画像の形状・色・サイズ感が一致しているか",
+            f"  ③ 同一モデルと判断できるか（別モデルでないか）",
+            f"  ④ 直近のSOLD価格が ¥{mer_price:,} 前後か",
+            f"",
+        ]
+
+    out_path = OUTPUT_DIR / "honmei_summary.txt"
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    out_path.write_text("\n".join(lines), encoding="utf-8-sig")
+    print(f"OK: 本命{len(honmei_df)}件 -> {out_path} に出力しました")
+
 
 def copy_dashboard_to_docs():
     import shutil

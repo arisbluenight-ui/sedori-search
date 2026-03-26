@@ -30,6 +30,8 @@ div[data-baseweb="select"]>div{background:var(--card)!important;border-color:var
 .tag-site{background:#1a3d4d;color:#8ad4d6;}
 .tag-danger{background:#4d1a1a;color:var(--danger);}
 .tag-cond{background:#2a3d1a;color:#8dcc6a;}
+.tag-hold-reason{background:#3d2a0a;color:#f0a040;border:1px solid #7a5010;}
+.tag-cond-warn{background:#4d1a1a;color:#f06060;border:1px solid #8a2020;}
 .url-btn{display:inline-block;padding:4px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;text-decoration:none;margin-right:6px;}
 .url-primary{background:var(--teal);color:var(--bg);}
 .url-secondary{background:var(--border);color:var(--light);}
@@ -132,6 +134,29 @@ else:
         if site:  tags+=f'<span class="tag tag-site">🏪 {site}</span>'
         if cond:  tags+=f'<span class="tag tag-cond">📊 {cond}</span>'
         if danger:tags+=f'<span class="tag tag-danger">⚠️ {danger}</span>'
+        if cond in ("BC", "C"): tags+=f'<span class="tag tag-cond-warn">🔴 状態要確認({cond})</span>'
+
+        # 保留理由タグ（保留カードのみ）
+        hold_reason_tags = ""
+        if rank == "保留":
+            model_match  = g(row, "model_match")
+            sell_speed   = g(row, "sell_speed")
+            color_align  = g(row, "color_alignment")
+            note_text    = g(row, "note", "skip_reason")
+
+            if model_match == "False":
+                hold_reason_tags += '<span class="tag tag-hold-reason">🔍 モデル不一致</span>'
+            if sell_speed == "slow":
+                hold_reason_tags += '<span class="tag tag-hold-reason">🐢 売れ行き遅い</span>'
+            if color_align and color_align not in ("strong", ""):
+                label = {"near": "色:near(次点)", "neutral": "色:neutral(不一致)", "unknown": "色:unknown(不明)"}.get(color_align, f"色:{color_align}")
+                hold_reason_tags += f'<span class="tag tag-hold-reason">🎨 {label}</span>'
+            if "mercari_sample_count" in note_text:
+                hold_reason_tags += '<span class="tag tag-hold-reason">📊 参照数不足(&lt;8件)</span>'
+            if "matched_sold_count" in note_text:
+                hold_reason_tags += '<span class="tag tag-hold-reason">📉 SOLD数不足(&lt;5件)</span>'
+            if "価格検討枠" in note_text:
+                hold_reason_tags += '<span class="tag tag-hold-reason">💰 価格検討枠</span>'
 
         try: sp=f'¥{float(src_p.replace(",","")):,.0f}'
         except: sp=src_p
@@ -153,6 +178,7 @@ else:
         <div class="{cls}">
           <div style="font-size:0.95rem;font-weight:700;color:#F3F3E7;margin-bottom:6px">{title}</div>
           <div style="margin-bottom:6px">{tags}</div>
+          {'<div style="margin-bottom:6px">'+hold_reason_tags+'</div>' if hold_reason_tags else ''}
           {'<div style="margin-bottom:4px">'+sub+'</div>' if sub else ''}
           <hr class="div">
           <div style="font-size:0.85rem;color:#CAE8E9">仕入れ {sp} → メルカリ {mp} &nbsp; {sold_h}</div>

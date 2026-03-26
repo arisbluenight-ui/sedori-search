@@ -228,6 +228,14 @@ EXCLUDED_CANDIDATE_TERMS = {
     "帽子",
     "hat",
     "cap",
+    # スマホケース・タブレットケース系
+    "スマホケース",
+    "スマートフォンケース",
+    "iPhoneケース",
+    "phone case",
+    "phonecase",
+    "スマホカバー",
+    "タブレットケース",
 }
 
 

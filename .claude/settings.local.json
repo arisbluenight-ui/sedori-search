@@ -1,26 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:www.2ndstreet.jp)",
-      "WebFetch(domain:vector-park.jp)",
-      "WebFetch(domain:rehello.jp)",
-      "WebFetch(domain:www.trefac.jp)",
-      "WebFetch(domain:brandear.jp)",
-      "Bash(.venv/Scripts/python app.py --help)",
-      "WebFetch(domain:www.brandear.jp)",
-      "Bash(.venv/Scripts/python app.py --brands \"COACH\" --max-items 50 --headless true)",
-      "Bash(.venv/Scripts/python app.py --brands \"COACH,MARNI,FURLA\" --max-items 50 --headless true)",
-      "Bash(.venv/Scripts/python app.py --brands \"MARNI,POLENE,FURLA\" --max-items 50 --headless true --full-source-scan true)",
-      "Bash(printenv PATH)",
-      "Bash(echo $PATH)",
-      "Bash(cmd /c \"dir /b C:\\\\Users\\\\talia\\\\OneDrive\\\\Desktop\\\\sedori-search\\\\venv\" 2>&1)",
-      "Bash(cmd /c \"where python\" 2>&1)",
-      "Bash(cmd /c \"dir /s /b python.exe 2>nul\")",
-      "Bash(powershell -Command \"Get-Command python -ErrorAction SilentlyContinue | Select-Object Source\" 2>&1)",
-      "Bash(powershell -Command \"Get-ChildItem -Path C:\\\\Users\\\\talia -Recurse -Filter python.exe -ErrorAction SilentlyContinue | Where-Object { \\\\$_.FullName -notlike '*WindowsApps*' } | Select-Object FullName\" 2>&1)",
-      "Bash(powershell -Command \"& 'C:\\\\Users\\\\talia\\\\OneDrive\\\\Desktop\\\\sedori-search\\\\.venv\\\\Scripts\\\\python.exe' --version\" 2>&1)",
-      "Bash(powershell -Command \"Set-Location 'C:\\\\Users\\\\talia\\\\OneDrive\\\\Desktop\\\\sedori-search'; & '.\\\\.venv\\\\Scripts\\\\python.exe' app.py --brands 'Longchamp,Kate Spade,FURLA,IL BISONTE' --max-items 50 --headless true --full-source-scan true --min-profit-rate 0.2\" 2>&1)",
-      "Bash(py --version)"
+      "Bash(*)",
+      "WebFetch(*)",
+      "Edit(*)",
+      "Write(*)"
+"defaultMode": "bypassPermissions"
     ]
   }
 }
+

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import os
 import sys
+import urllib.request
 from contextlib import ExitStack
 from pathlib import Path
 
@@ -154,6 +157,51 @@ def sell_speed_suffix(row: dict) -> str:
 
 def summarize_to_console(text: str) -> None:
     print(text)
+
+
+def notify_discord(message: str, csv_path: str | None = None) -> None:
+    """実行結果をDiscordに送信する。"""
+    token = os.environ.get("DISCORD_BOT_TOKEN")
+    if not token:
+        env_path = Path.home() / ".claude" / "channels" / "discord" / ".env"
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("DISCORD_BOT_TOKEN="):
+                    token = line.split("=", 1)[1].strip()
+                    break
+    if not token:
+        return
+
+    channel_id = os.environ.get("DISCORD_CHANNEL_ID", "1485731974936269010")
+    api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
+    headers = {"Authorization": f"Bot {token}"}
+
+    if csv_path and Path(csv_path).exists():
+        boundary = "DiscordFormBoundary7MA4YWxkTrZu0gW"
+        csv_bytes = Path(csv_path).read_bytes()
+        csv_name = Path(csv_path).name
+        payload_json = json.dumps({"content": message}).encode("utf-8")
+        body = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="payload_json"\r\n'
+            f"Content-Type: application/json\r\n\r\n"
+        ).encode() + payload_json + b"\r\n"
+        body += (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="files[0]"; filename="{csv_name}"\r\n'
+            f"Content-Type: text/csv\r\n\r\n"
+        ).encode() + csv_bytes + b"\r\n"
+        body += f"--{boundary}--\r\n".encode()
+        headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+    else:
+        body = json.dumps({"content": message}).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    try:
+        req = urllib.request.Request(api_url, data=body, headers=headers, method="POST")
+        urllib.request.urlopen(req, timeout=15)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Discord通知失敗: %s", exc)
 
 
 def apply_analysis_stats_to_sites(site_stats: dict[str, dict], result: BrandAnalysisResult, config: ScraperConfig) -> dict[str, dict]:
@@ -430,6 +478,13 @@ def run() -> int:
     print(f"　保留　　　{hold_count} 件")
     print(f"　想定利益　¥{total_profit:,}")
     print("========================================\n")
+
+    notify_discord(
+        f"✅ せどり検索完了\n"
+        f"利益候補 {len(final_rows)} 件（本命 {honmei_count} 件 / 保留 {hold_count} 件）\n"
+        f"想定利益合計 ¥{total_profit:,}",
+        csv_path=str(output_path),
+    )
     return 0
 
 
