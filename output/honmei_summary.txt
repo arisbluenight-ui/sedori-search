@@ -1,28 +1,28 @@
-﻿【本命候補リスト - 2026/04/15】
+﻿【本命候補リスト - 2026/04/21】
 メルカリで以下の商品のSOLD件数と画像確認をお願いします。
 各商品について「SOLD2件以上あるか」「画像が一致するか」を確認してください。
 
 ==================================================
-【1】SOMES
+【1】ペッレモルビダ
 
 ■ 商品情報
-  タイトル : 新着 中古 SOMES(ソメス) ショルダーバッグ ダークブラウン レザー
+  タイトル : ペッレモルビダ PELLE MORBIDA ショルダーバッグ クラッチバッグ 2WAY レザー ブラ
   推定モデル: 不明（要確認）
   色      : brown
   素材    : 不明
   形状    : バッグ
-  仕入れ先: 楽天市場
-  仕入値  : ¥10,468 → 利益: +¥12,425
-  仕入URL : https://item.rakuten.co.jp/brandear-store/39359391/?variantId=39359391&scid=seo-carousel-search
+  仕入れ先: ベクトルパーク
+  仕入値  : ¥11,800 → 利益: +¥14,180
+  仕入URL : https://vector-park.jp/item/142-102510310085/
 
 ■ メルカリSOLD確認用
-  検索キーワード: SOMES brown バッグ
-  SOLD検索URL : https://jp.mercari.com/search?keyword=SOMES%20brown%20%E3%83%90%E3%83%83%E3%82%B0&status=sold_out
+  検索キーワード: ペッレモルビダ brown バッグ
+  SOLD検索URL : https://jp.mercari.com/search?keyword=%E3%83%9A%E3%83%83%E3%83%AC%E3%83%A2%E3%83%AB%E3%83%93%E3%83%80%20brown%20%E3%83%90%E3%83%83%E3%82%B0&status=sold_out
 
 ■ 確認ポイント（Claude in Chromeへ貼り付け用）
   以下をメルカリで検索し確認してください：
-  「SOMES brown バッグ」
+  「ペッレモルビダ brown バッグ」
   ① SOLD件数が2件以上あるか
   ② 画像の形状・色・サイズ感が一致しているか
   ③ 同一モデルと判断できるか（別モデルでないか）
-  ④ 直近のSOLD価格が ¥26,270 前後か
+  ④ 直近のSOLD価格が ¥29,700 前後か

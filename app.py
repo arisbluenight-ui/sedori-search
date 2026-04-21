@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+import urllib.error
 import urllib.request
 from contextlib import ExitStack
 from pathlib import Path
@@ -161,6 +162,7 @@ def summarize_to_console(text: str) -> None:
 
 def notify_discord(message: str, csv_path: str | None = None) -> None:
     """実行結果をDiscordに送信する。"""
+    logging.getLogger(__name__).warning("[DEBUG] notify_discord called")
     token = os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
         env_path = Path.home() / ".claude" / "channels" / "discord" / ".env"
@@ -174,7 +176,10 @@ def notify_discord(message: str, csv_path: str | None = None) -> None:
 
     channel_id = os.environ.get("DISCORD_CHANNEL_ID", "1485731974936269010")
     api_url = f"https://discord.com/api/v10/channels/{channel_id}/messages"
-    headers = {"Authorization": f"Bot {token}"}
+    headers = {
+        "Authorization": f"Bot {token}",
+        "User-Agent": "DiscordBot (sedori-search, 1.0)",
+    }
 
     if csv_path and Path(csv_path).exists():
         boundary = "DiscordFormBoundary7MA4YWxkTrZu0gW"
@@ -200,8 +205,19 @@ def notify_discord(message: str, csv_path: str | None = None) -> None:
     try:
         req = urllib.request.Request(api_url, data=body, headers=headers, method="POST")
         urllib.request.urlopen(req, timeout=15)
+    except urllib.error.HTTPError as exc:
+        resp_body = ""
+        try:
+            resp_body = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        masked = (f"{token[:6]}...{token[-4:]}" if token and len(token) > 10 else "***") if token else "未取得"
+        logging.getLogger(__name__).warning(
+            "Discord通知失敗: HTTP %s / channel=%s / token=%s / response=%s",
+            exc.code, channel_id, masked, resp_body,
+        )
     except Exception as exc:
-        logging.getLogger(__name__).warning("Discord通知失敗: %s", exc)
+        logging.getLogger(__name__).warning("Discord通知失敗（その他）: %s", exc)
 
 
 def apply_analysis_stats_to_sites(site_stats: dict[str, dict], result: BrandAnalysisResult, config: ScraperConfig) -> dict[str, dict]:

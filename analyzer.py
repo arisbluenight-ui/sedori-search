@@ -187,6 +187,9 @@ class MatchResult:
     popularity_color_band_top3: str
     strict_validation_note: str
     matched_same_color_band_count: int = 0
+    matched_sold_titles: list[str] = field(default_factory=list)
+    matched_sold_urls: list[str] = field(default_factory=list)
+    matched_sold_image_urls: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -455,6 +458,8 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
     merged_keywords: list[str] = []
     sold_model_signatures: list[str] = []
     sold_titles: list[str] = []
+    sold_urls: list[str] = []
+    sold_image_urls: list[str] = []
     model_match = False
     line_match = False
     material_match = False
@@ -466,6 +471,8 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
     for _, item, keywords, details in top_items:
         merged_keywords.extend(keywords or pick_representative_keywords(item.title, brand))
         sold_titles.append(item.title)
+        sold_urls.append(item.url)
+        sold_image_urls.append(item.image_urls[0] if item.image_urls else "")
         sold_profile: ListingProfile = details["sold_profile"]
         if sold_profile.strict_signature:
             sold_model_signatures.append(sold_profile.strict_signature)
@@ -521,6 +528,9 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
         popularity_color_band_top2=popularity_color_bands[1],
         popularity_color_band_top3=popularity_color_bands[2],
         strict_validation_note=" / ".join(dict.fromkeys(strict_notes)),
+        matched_sold_titles=sold_titles,
+        matched_sold_urls=sold_urls,
+        matched_sold_image_urls=sold_image_urls,
     )
 
 
@@ -705,6 +715,8 @@ def analyze_brand(
             "color_alignment": color_alignment,
             "matched_same_color_band_count": match_result.matched_same_color_band_count,
             "matched_keywords": ",".join(match_result.matched_keywords),
+            "matched_sold_titles": " | ".join(match_result.matched_sold_titles),
+            "matched_sold_urls": " | ".join(match_result.matched_sold_urls),
             "review_required": review_required,
             "sell_speed": sell_speed,
             "popularity_color_top1_count": sold_stats.popularity_color_top1_count,
@@ -1046,6 +1058,8 @@ def save_results(rows: list[dict], output_path: str) -> pd.DataFrame:
                 "color_match",
                 "color_alignment",
                 "matched_keywords",
+                "matched_sold_titles",
+                "matched_sold_urls",
                 "review_required",
                 "sell_speed",
                 "popularity_color_top1_count",
