@@ -25,6 +25,7 @@ from config import (
     BRAND_ALIASES,
     BRAND_MAX_PRICE,
     BRAND_MAX_PRICE_REVIEW,
+    BRAND_MIN_MATCHED_SOLD_COUNT,
     BRAND_SELL_SPEED,
     COLOR_RULES,
     DISCOVERY_EXCLUDED_TERMS,
@@ -33,6 +34,7 @@ from config import (
     STRICT_MODEL_BRANDS,
     ScraperConfig,
 )
+
 from utils import (
     contains_bag_keyword,
     contains_excluded_candidate_term,
@@ -63,6 +65,10 @@ from utils import (
     top_common_colors,
 )
 
+try:
+    from vision_judge import VISION_TARGET_BRANDS
+except ImportError:
+    VISION_TARGET_BRANDS = set()
 
 DISCOVERY_STOPWORDS = {
     normalize_text(term)
@@ -180,6 +186,7 @@ class MatchResult:
     popularity_color_band_top2: str
     popularity_color_band_top3: str
     strict_validation_note: str
+    matched_same_color_band_count: int = 0
 
 
 @dataclass(slots=True)
@@ -498,6 +505,10 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
         size_match=size_match,
         color_match=color_match,
         matched_sold_count=len(top_items),
+        matched_same_color_band_count=sum(
+            1 for _, _, _, details in top_items
+            if set(source_profile.color_bands) & set(details["sold_profile"].color_bands)
+        ),
         model_signature=_display_signature(source_signature),
         sold_model_signature=_display_signature(sold_signature),
         popularity_color_hint=popularity_color_hints[0],
@@ -513,10 +524,30 @@ def estimate_sale_price(source: Listing, sold_items: list[Listing], stats: SoldS
     )
 
 
+def _vision_rescue_eligible(row: dict, brand: str) -> bool:
+    """Vision 救済ルートの対象条件。
+    - review_required でない
+    - color_alignment が strong、または near かつ matched_sold_count >= 5
+    - model_match=False または NO_MODEL_REQUIRED_BRANDS ブランド
+    flashy / unknown はコスト対効果が低いため対象外。
+    """
+    if row.get("review_required"):
+        return False
+    color = row.get("color_alignment", "")
+    color_ok = color == "strong"
+    if not color_ok:
+        return False
+    brand_upper = normalize_text(brand or "").upper()
+    no_model_req = {normalize_text(b).upper() for b in NO_MODEL_REQUIRED_BRANDS}
+    return (not row.get("model_match")) or (brand_upper in no_model_req)
+
+
 def classify_candidate_rank(row: dict) -> str:
     if row["review_required"]:
         return "hold"
-    if not row["model_match"]:
+    brand_upper = normalize_text(row.get("brand", "")).upper()
+    no_model_required = {normalize_text(b).upper() for b in NO_MODEL_REQUIRED_BRANDS}
+    if not row["model_match"] and brand_upper not in no_model_required:
         return "hold"
     # slow ブランドは color_alignment=strong でも review_required=True 扱い
     if row.get("sell_speed") == "slow":
@@ -584,7 +615,8 @@ def analyze_brand(
         price_review_required = source.price > brand_max_normal
 
         match_result = estimate_sale_price(source, filtered_sold_items, sold_stats, brand)
-        if match_result.estimated_price <= 0 or match_result.matched_sold_count < 3:
+        min_matched = BRAND_MIN_MATCHED_SOLD_COUNT.get(brand.upper(), 3)
+        if match_result.estimated_price <= 0 or match_result.matched_sold_count < min_matched:
             stats.similar_sold_shortage_count += 1
             stats.site_excluded_count[site] += 1
             continue
@@ -620,6 +652,9 @@ def analyze_brand(
             popularity_color_hints,
             popularity_color_bands,
         )
+        if color_alignment in ("flashy", "unknown") and match_result.matched_same_color_band_count >= 2:
+            color_alignment = "neutral"
+            color_reason = f"同系色売れ実績{match_result.matched_same_color_band_count}件で緩和(neutral)"
         row_note_parts.append(
             f"売れ筋上位色帯={','.join(popularity_color_bands[:3]) or 'unknown'} / "
             f"商品配色={','.join(source_color_features['detected_color_bands']) or 'unknown'} / {color_reason}"
@@ -668,6 +703,7 @@ def analyze_brand(
             "popularity_color_bands": ",".join(popularity_color_bands),
             "color_match": match_result.color_match,
             "color_alignment": color_alignment,
+            "matched_same_color_band_count": match_result.matched_same_color_band_count,
             "matched_keywords": ",".join(match_result.matched_keywords),
             "review_required": review_required,
             "sell_speed": sell_speed,
@@ -714,6 +750,134 @@ def analyze_brand(
 
         row["candidate_rank"] = classify_candidate_rank(row)
 
+        row["vision_confirmed"] = None
+        row["vision_near"] = None
+        row["vision_rejected"] = None
+        row["vision_confidence"] = None
+        row["vision_summary"] = "SKIP: 条件未達"
+        row["vision_manual"] = None
+
+        logging.warning(
+            "VISION DEBUG brand=%r upper=%r rank=%r target=%r has_images=%r source_title=%r",
+            brand,
+            (brand or "").upper(),
+            row.get("candidate_rank"),
+            (brand or "").upper() in VISION_TARGET_BRANDS,
+            bool(getattr(source, "image_urls", None)),
+            getattr(source, "title", ""),
+        )
+
+        if (
+            row["candidate_rank"] == "honmei"
+            and (brand or "").upper() in VISION_TARGET_BRANDS
+            and source.image_urls
+        ):
+            try:
+                from vision_judge import vision_compare_sold_items
+
+                sold_for_vision = [
+                    {
+                        "item_url": getattr(s, "url", ""),
+                        "title": s.title,
+                        "price": getattr(s, "price", 0),
+                        "image_urls": getattr(s, "image_urls", []),
+                    }
+                    for s in filtered_sold_items[:5]
+                    if getattr(s, "image_urls", None)
+                ]
+
+                if sold_for_vision:
+                    vision_result = vision_compare_sold_items(
+                        source_item={
+                            "title": source.title,
+                            "price": source.price,
+                            "item_url": getattr(source, "url", ""),
+                            "image_urls": source.image_urls,
+                        },
+                        mercari_sold_items=sold_for_vision,
+                        brand=brand,
+                        model_hint=row.get("model_signature", ""),
+                    )
+                    row["vision_confirmed"] = vision_result["sold_count_vision_confirmed"]
+                    row["vision_near"] = vision_result["sold_count_near_variant"]
+                    row["vision_rejected"] = vision_result["vision_reject_count"]
+                    row["vision_confidence"] = vision_result["model_match_confidence"]
+                    row["vision_summary"] = vision_result["vision_reason_summary"]
+                    row["vision_manual"] = vision_result["manual_review_required"]
+
+                    all_api_error = (
+                        vision_result["sold_count_vision_confirmed"] == 0
+                        and vision_result["sold_count_near_variant"] == 0
+                        and vision_result["vision_reject_count"] == 0
+                        and vision_result["manual_review_required"]
+                    )
+                    if all_api_error:
+                        row["note"] = "Vision全件APIエラー(rank維持) / " + row.get("note", "")
+                    else:
+                        confirmed = vision_result["sold_count_vision_confirmed"]
+                        rejected  = vision_result["vision_reject_count"]
+                        if confirmed == 0 or (confirmed == 1 and rejected >= 3):
+                            row["candidate_rank"] = "hold"
+                            row["note"] = f"Vision品質不足(confirmed={confirmed}/rejected={rejected}) / " + row.get("note", "")
+            except Exception as e:
+                logging.warning("Vision判定エラー: %s", e)
+                row["vision_summary"] = f"エラー: {e}"
+        elif (
+            row["candidate_rank"] == "hold"
+            and (brand or "").upper() in VISION_TARGET_BRANDS
+            and source.image_urls
+            and _vision_rescue_eligible(row, brand)
+        ):
+            # Vision 救済ルート：色条件が良いが model_match=False 等で hold の候補を Vision で再判定
+            # confirmed >= 1 なら honmei に昇格
+            try:
+                from vision_judge import vision_compare_sold_items
+
+                sold_for_vision = [
+                    {
+                        "item_url": getattr(s, "url", ""),
+                        "title": s.title,
+                        "price": getattr(s, "price", 0),
+                        "image_urls": getattr(s, "image_urls", []),
+                    }
+                    for s in filtered_sold_items[:5]
+                    if getattr(s, "image_urls", None)
+                ]
+
+                if sold_for_vision:
+                    vision_result = vision_compare_sold_items(
+                        source_item={
+                            "title": source.title,
+                            "price": source.price,
+                            "item_url": getattr(source, "url", ""),
+                            "image_urls": source.image_urls,
+                        },
+                        mercari_sold_items=sold_for_vision,
+                        brand=brand,
+                        model_hint=row.get("model_signature", ""),
+                    )
+                    row["vision_confirmed"] = vision_result["sold_count_vision_confirmed"]
+                    row["vision_near"] = vision_result["sold_count_near_variant"]
+                    row["vision_rejected"] = vision_result["vision_reject_count"]
+                    row["vision_confidence"] = vision_result["model_match_confidence"]
+                    row["vision_summary"] = vision_result["vision_reason_summary"]
+                    row["vision_manual"] = vision_result["manual_review_required"]
+
+                    if vision_result["sold_count_vision_confirmed"] >= 1:
+                        row["candidate_rank"] = "honmei"
+                        row["note"] = "Vision救済→honmei昇格 / " + row.get("note", "")
+                    else:
+                        row["note"] = "Vision救済→confirmed0件(hold維持) / " + row.get("note", "")
+            except Exception as e:
+                logging.warning("Vision救済判定エラー: %s", e)
+                row["vision_summary"] = f"エラー: {e}"
+        else:
+            row["vision_summary"] = (
+                f"SKIP: rank={row.get('candidate_rank')} "
+                f"target={(brand or '').upper() in VISION_TARGET_BRANDS} "
+                f"has_images={bool(getattr(source, 'image_urls', None))}"
+            )
+        # ── Vision判定ここまで ──
         stats.primary_candidate_count += 1
         if row["candidate_rank"] == "hold" and not row["model_match"]:
             stats.model_mismatch_hold_or_skip_count += 1

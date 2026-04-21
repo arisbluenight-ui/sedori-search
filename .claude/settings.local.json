@@ -1,12 +1,54 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(*)",
-      "WebFetch(*)",
-      "Edit(*)",
-      "Write(*)"
-"defaultMode": "bypassPermissions"
-    ]
-  }
+    "permissions": {
+      "allow": [
+        "mcp__plugin_discord_discord__reply",
+        "mcp__plugin_discord_discord__fetch_messages",
+        "mcp__plugin_discord_discord__react",
+        "mcp__plugin_discord_discord__edit_message",
+        "mcp__plugin_discord_discord__download_attachment",
+        "Bash(*)",
+        "Edit(*)",
+        "Write(*)"
+      ],
+      "defaultMode": "bypassPermissions"
+    },
+    "model": "sonnet",
+    "hooks": {
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"C:/Users/talia/.claude/discord_stop_notify.py\"",
+              "timeout": 15,
+              "async": true
+            }
+          ]
+        }
+      ],
+      "PermissionRequest": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python \"C:/Users/talia/.claude/discord_notify.py\"",
+              "timeout": 15
+            }
+          ]
+        }
+      ]
+    },
+    "enabledPlugins": {
+      "discord@claude-plugins-official": true
+    },
+    "extraKnownMarketplaces": {
+      "claude-plugins-official": {
+        "source": {
+          "source": "github",
+          "repo": "anthropics/claude-plugins-official"
+        }
+      }
+    },
+    "autoUpdatesChannel": "latest",
+    "skipDangerousModePermissionPrompt": true
 }
-

@@ -51,6 +51,7 @@ class VectorParkScraper(PlaywrightScraper):
                 price_text = price_match.group(0) if price_match else container_text
                 listing = self.make_listing(brand, title, price_text, url)
                 if listing and listing.price <= self.config.effective_max_price(brand):
+                    listing.image_urls = [src for img in imgs for src in [str(img.get("src") or "")] if src.startswith("http")]
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(anchors))

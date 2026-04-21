@@ -69,6 +69,12 @@ class YahooShoppingScraper(PlaywrightScraper):
                     metadata={"availability_status": availability_status},
                 )
                 if listing and listing.price <= self.config.effective_max_price(brand):
+                    imgs = card.select("img")[:3]
+                    listing.image_urls = [
+                        u for img in imgs
+                        for u in [img.get("src") or img.get("data-src") or ""]
+                        if u.startswith("http") and not u.lower().split("?")[0].endswith(".svg")
+                    ]
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))

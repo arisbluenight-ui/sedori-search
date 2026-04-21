@@ -111,7 +111,7 @@ DANGER_WORDS_REJECT = [
 ]
 
 DANGER_WORDS_REVIEW = [
-    "スレ", "汚れ", "キズ", "角スレ", "型崩れ",
+    "スレ", "キズ", "型崩れ",
     "変色", "ヤケ", "におい", "内側汚れ", "金具キズ",
     "持ち手使用感", "付属品なし", "保存袋なし", "箱なし",
     "比較的良い", "使用可能", "まだまだ使える",
@@ -132,6 +132,7 @@ MODEL_SPECIFICITY_REQUIRED = [
 STRICT_MODEL_CHECK_BRANDS = {
     "LOEWE", "PRADA", "GUCCI", "CELINE",
     "FENDI", "BURBERRY", "MIU MIU", "GIVENCHY",
+    "PIERRE HARDY",
 }
 
 # ============================================================
@@ -229,8 +230,12 @@ def check_description_words(text: str) -> str:
     for word in DANGER_WORDS_REJECT:
         if word in text:
             return "reject"
+    # 「角スレ」は単独では review にしない。
+    # ただし他の review 語が同時に存在する場合は通常どおり判定するため、
+    # 「角スレ」部分だけを除去したテキストで DANGER_WORDS_REVIEW を走査する。
+    review_text = text.replace("角スレ", "")
     for word in DANGER_WORDS_REVIEW:
-        if word in text:
+        if word in review_text:
             return "review"
     return "allow"
 

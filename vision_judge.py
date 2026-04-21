@@ -9,8 +9,12 @@ IMG_CACHE_DIR   = Path("image_cache")
 PARSE_FAIL_LOG  = Path("vision_parse_failures.jsonl")
 
 VISION_TARGET_BRANDS = {
-    "LOEWE","PRADA","GUCCI","CELINE",
-    "FENDI","BURBERRY","MIU MIU","GIVENCHY",
+    "LOEWE", "PRADA", "GUCCI", "CELINE",
+    "FENDI", "BURBERRY", "MIU MIU", "GIVENCHY",
+    "SOMES", "IACUCCI", "BONAVENTURA", "PIERRE HARDY",
+    "3.1 PHILLIP LIM", "GLENROYAL", "MYSTERY RANCH",
+    "TOM FORD", "SOEUR", "万双",
+    "A VACATION", "MOTHERHOUSE", "LAST CROPS",
 }
 
 MAX_SOLD_COMPARE   = 5
@@ -62,15 +66,27 @@ near_variant: 同系列・異なるサイズや仕様の可能性
 different_model: 別モデル
 """
 
+_SUPPORTED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
 def _media_type(url, ct):
     ct = ct.lower()
     if "webp" in ct: return "image/webp"
     if "png"  in ct: return "image/png"
     if "gif"  in ct: return "image/gif"
+    if "svg"  in ct: return None  # SVG 非対応
     u = url.lower().split("?")[0]
     if u.endswith(".webp"): return "image/webp"
     if u.endswith(".png"):  return "image/png"
+    if u.endswith(".svg"):  return None  # SVG 非対応
     return "image/jpeg"
+
+def _check_magic_bytes(raw: bytes) -> bool:
+    """先頭バイトを見て Anthropic API が受け付けるフォーマットか確認する。"""
+    if raw[:2] == b"\xff\xd8":                    return True   # JPEG
+    if raw[:8] == b"\x89PNG\r\n\x1a\n":           return True   # PNG
+    if raw[:6] in (b"GIF87a", b"GIF89a"):         return True   # GIF
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP": return True # WebP
+    return False  # AVIF / SVG / その他
 
 def fetch_image(url):
     if USE_IMAGE_CACHE:
@@ -85,7 +101,12 @@ def fetch_image(url):
         with urlopen(req, timeout=10) as r:
             ct  = r.headers.get("Content-Type", "image/jpeg")
             mt  = _media_type(url, ct)
-            b64 = base64.standard_b64encode(r.read()).decode()
+            if mt is None:
+                return None, None  # SVG など非対応フォーマット
+            raw = r.read()
+            if not _check_magic_bytes(raw):
+                return None, None  # AVIF など実バイナリが非対応
+            b64 = base64.standard_b64encode(raw).decode()
             if USE_IMAGE_CACHE:
                 data.write_text(b64)
                 meta.write_text(json.dumps({"url": url, "media_type": mt}))
@@ -131,8 +152,10 @@ def _call_api(blocks, brand, hint, retries=2):
             )
             result = _parse(r.content[0].text, ctx=f"{brand}/{hint}/attempt{attempt}")
             if result: return result
-        except Exception:
-            pass
+        except Exception as e:
+            time.sleep(1.5)
+            import logging as _log
+            _log.warning("Vision API エラー (attempt %d): %s: %s", attempt, type(e).__name__, str(e)[:200])
         if attempt < retries: time.sleep(1.5)
     return None
 
@@ -162,10 +185,13 @@ def vision_compare_sold_items(source_item, mercari_sold_items, brand, model_hint
         out["vision_reason_summary"]  = "仕入れ画像取得失敗"
         return out
 
-    all_flags  = set()
-    top_conf   = 0.0
-    top_url    = ""
-    top_reason = ""
+    all_flags           = set()
+    top_confirmed_conf  = 0.0
+    top_url             = ""
+    top_reason          = ""
+    fallback_top_conf   = 0.0
+    fallback_top_url    = ""
+    fallback_top_reason = ""
 
     for sold in mercari_sold_items[:MAX_SOLD_COMPARE]:
         sold_blocks = build_blocks(sold.get("image_urls", []), "画像セットB（メルカリSOLD）")
@@ -185,6 +211,11 @@ def vision_compare_sold_items(source_item, mercari_sold_items, brand, model_hint
 
         if verdict == "same_model" and conf >= CONF_CONFIRMED:
             out["sold_count_vision_confirmed"] += 1
+            # confirmed の中で最高 conf を保持
+            if conf > top_confirmed_conf:
+                top_confirmed_conf = conf
+                top_url    = sold.get("item_url","")
+                top_reason = reason
         elif verdict == "near_variant":
             out["sold_count_near_variant"] += 1
         elif verdict == "same_model":
@@ -192,9 +223,13 @@ def vision_compare_sold_items(source_item, mercari_sold_items, brand, model_hint
         else:
             out["vision_reject_count"] += 1
 
+        # fallback: 全体の最高 conf（manual_review_required 判定用）
+        if conf > fallback_top_conf:
+            fallback_top_conf   = conf
+            fallback_top_url    = sold.get("item_url","")
+            fallback_top_reason = reason
+
         for flag in j.get("conflict_flags", []): all_flags.add(flag)
-        if conf > top_conf:
-            top_conf = conf; top_url = sold.get("item_url",""); top_reason = reason
 
         out["vision_details"].append({
             "item_url": sold.get("item_url",""), "title": sold.get("title",""),
@@ -207,9 +242,15 @@ def vision_compare_sold_items(source_item, mercari_sold_items, brand, model_hint
         })
         time.sleep(0.5)
 
-    out["model_match_confidence"]   = round(top_conf, 2)
-    out["vision_top_match_url"]     = top_url
-    out["vision_reason_summary"]    = top_reason
+    # confirmed が1件以上あれば confirmed 側の url/reason を使い、なければ fallback
+    if out["sold_count_vision_confirmed"] >= 1:
+        out["vision_top_match_url"]   = top_url
+        out["vision_reason_summary"]  = top_reason
+    else:
+        out["vision_top_match_url"]   = fallback_top_url
+        out["vision_reason_summary"]  = fallback_top_reason
+
+    out["model_match_confidence"]   = round(fallback_top_conf, 2)
     out["attribute_conflict_flags"] = "／".join(sorted(all_flags))
 
     if not out["manual_review_required"]:
@@ -217,6 +258,6 @@ def vision_compare_sold_items(source_item, mercari_sold_items, brand, model_hint
             out["sold_count_vision_confirmed"],
             out["sold_count_near_variant"],
             out["vision_reject_count"],
-            top_conf,
+            fallback_top_conf,
         )
     return out

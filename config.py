@@ -36,6 +36,7 @@ PRIORITY_BRANDS = [
     # 追加ブランド
     "SOMES",
     "Mystery Ranch",
+    "BONAVENTURA",
     "TOM FORD",
     "IACUCCI",
     "3.1 Phillip Lim",
@@ -68,6 +69,7 @@ BRAND_ALIASES: dict[str, list[str]] = {
     "MONCLER": ["モンクレール"],
     "JIMMY CHOO": ["ジミーチュウ"],
     "IACUCCI": ["イアクッチ"],
+    "BONAVENTURA": ["ボナベンチュラ", "ボナベンチャー"],
     "LAST CROPS": ["ラストクロップス", "LASTCROPS"],
     "A VACATION": ["アヴァケーション"],
     "MARNI": ["マルニ"],
@@ -463,8 +465,12 @@ STRICT_MODEL_BRANDS = {"POLENE", "IACUCCI", "MARNI"}
 # モデル名なし除外ルールの対象外ブランド
 # POLENE は strict_signature で別管理のため除外不要
 # モデル名を使わないブランドが出た場合はここに追加する
-NO_MODEL_REQUIRED_BRANDS: set[str] = {"POLENE", "IACUCCI", "MARNI", "A VACATION"}
+NO_MODEL_REQUIRED_BRANDS: set[str] = set(PRIORITY_BRANDS) - {"Pierre Hardy"}
 
+# ブランド別 matched_sold_count 最低件数（デフォルトは analyzer.py の 3）
+BRAND_MIN_MATCHED_SOLD_COUNT: dict[str, int] = {
+    "PIERRE HARDY": 5,
+}
 
 POLENE_MODEL_PATTERNS = {
     "numero-un": ["numero un", "numero1", "numéro un", "numero one", "numero un nano", "numero un mini"],
@@ -520,7 +526,7 @@ class ScraperConfig:
     mercari_fee_rate: float = 0.10
     min_profit_amount: int = 3000
     final_output_min_profit: int = 10000
-    min_mercari_sample_count: int = 3
+    min_mercari_sample_count: int = 5
     user_specified_brands: bool = False
     full_source_scan: bool = False
     active_source_sites: list[str] = field(default_factory=lambda: PRIMARY_SOURCE_SITES.copy())

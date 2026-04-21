@@ -68,6 +68,11 @@ class RakutenScraper(PlaywrightScraper):
                     metadata={"availability_status": "available"},
                 )
                 if listing and listing.price <= self.config.effective_max_price(brand):
+                    img = item.get("image", "")
+                    if isinstance(img, list):
+                        listing.image_urls = [u for u in img if isinstance(u, str) and u.startswith("http")]
+                    elif isinstance(img, str) and img.startswith("http"):
+                        listing.image_urls = [img]
                     listings.append(listing)
 
             if structured_items:
@@ -82,6 +87,8 @@ class RakutenScraper(PlaywrightScraper):
                 price_text = self.pick_text(card, self._price_selectors())
                 item_url = self.pick_attr(card, self._link_selectors(), "href")
                 availability_status = detect_availability_status(card.get_text(" ", strip=True))
+                imgs = card.select("img")[:3]
+                image_urls = [u for img in imgs for u in [img.get("src") or img.get("data-src") or ""] if u.startswith("http")]
                 listing = self.make_listing(
                     brand,
                     title,
@@ -91,6 +98,7 @@ class RakutenScraper(PlaywrightScraper):
                     metadata={"availability_status": availability_status},
                 )
                 if listing and listing.price <= self.config.effective_max_price(brand):
+                    listing.image_urls = image_urls
                     listings.append(listing)
 
             self.complete_search_stats(listings, search_result_count=len(cards))
