@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-05-25 05:29",
-  "source_file": "profitable_items_20260525_051600_tods_polene_iacucci_anteprima_marni.csv",
+  "updated_at": "2026-05-25 05:40",
+  "source_file": "profitable_items_20260525_053711_iacucci.csv",
   "items": [
     {
       "candidate_rank": "保留",
@@ -58,15 +58,15 @@
       "popularity_color_top2_ratio": 0.0667,
       "popularity_color_top3_count": 0,
       "popularity_color_top3_ratio": 0.0,
-      "note": "類似売り切れ3件ベースで推定 / 要目視確認(matched_sold_count=3) / モデル系統一致=Sorbetto / 売り手候補モデル=Sorbetto / 売れ筋上位色帯=black,unknown,unknown / 商品配色=white-beige / 人気色不一致だが落ち着いた定番配色",
+      "note": "Vision監査のみ（rank変更なし） / 類似売り切れ3件ベースで推定 / 要目視確認(matched_sold_count=3) / モデル系統一致=Sorbetto / 売り手候補モデル=Sorbetto / 売れ筋上位色帯=black,unknown,unknown / 商品配色=white-beige / 人気色不一致だが落ち着いた定番配色",
       "condition_rank": "",
       "danger_word": "",
-      "vision_confirmed": "",
-      "vision_near": "",
-      "vision_rejected": "",
-      "vision_confidence": "",
-      "vision_summary": "SKIP: rank=hold has_images=True",
-      "vision_manual": "",
+      "vision_confirmed": 1,
+      "vision_near": 0,
+      "vision_rejected": 4,
+      "vision_confidence": 0.95,
+      "vision_summary": "配色・デザイン・形状が完全一致のSorbetto",
+      "vision_manual": false,
       "mercari_url": "https://jp.mercari.com/search?keyword=IACUCCI%20%E3%82%A4%E3%82%A2%E3%82%AF%E3%83%83%E3%83%81%20IACUCCI%20%E3%82%BD%E3%83%AB%E3%83%99%E3%83%83%E3%83%88%20%E3%83%88%E3%83%BC%E3%83%88%E3%83%90%E3%83%83%E3%82%B0%20%E3%83%AC%E3%82%B6%E3%83%BC%20%C3%97&status=sold_out"
     },
     {
@@ -125,15 +125,15 @@
       "popularity_color_top2_ratio": 0.0667,
       "popularity_color_top3_count": 0,
       "popularity_color_top3_ratio": 0.0,
-      "note": "類似売り切れ3件ベースで推定 / 要目視確認(matched_sold_count=3) / モデル系統一致=Sorbetto / 売り手候補モデル=Sorbetto / 売れ筋上位色帯=black,unknown,unknown / 商品配色=blue-navy,white-beige / 人気色不一致だが落ち着いた定番配色",
+      "note": "Vision監査のみ（rank変更なし） / 類似売り切れ3件ベースで推定 / 要目視確認(matched_sold_count=3) / モデル系統一致=Sorbetto / 売り手候補モデル=Sorbetto / 売れ筋上位色帯=black,unknown,unknown / 商品配色=blue-navy,white-beige / 人気色不一致だが落ち着いた定番配色",
       "condition_rank": "",
       "danger_word": "",
-      "vision_confirmed": "",
-      "vision_near": "",
-      "vision_rejected": "",
-      "vision_confidence": "",
-      "vision_summary": "SKIP: rank=hold has_images=True",
-      "vision_manual": "",
+      "vision_confirmed": 1,
+      "vision_near": 0,
+      "vision_rejected": 4,
+      "vision_confidence": 0.9,
+      "vision_summary": "形状、ロゴ、配色、金具が完全に一致するSorbetto",
+      "vision_manual": false,
       "mercari_url": "https://jp.mercari.com/search?keyword=IACUCCI%20%E3%82%A4%E3%82%A2%E3%82%AF%E3%83%83%E3%83%81%20IACUCCI%20%E3%82%BD%E3%83%AB%E3%83%99%E3%83%83%E3%83%88%20SORBETTO%20L%20%E3%83%88&status=sold_out"
     }
   ]
