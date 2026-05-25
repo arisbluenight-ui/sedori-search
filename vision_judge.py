@@ -90,6 +90,17 @@ def _check_magic_bytes(raw: bytes) -> bool:
     return False  # AVIF / SVG / その他
 
 def fetch_image(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        try:
+            raw = Path(url).read_bytes()
+            if not _check_magic_bytes(raw):
+                return None, None
+            mt = _media_type(url, "")
+            if mt is None:
+                return None, None
+            return base64.standard_b64encode(raw).decode(), mt
+        except Exception:
+            return None, None
     if USE_IMAGE_CACHE:
         IMG_CACHE_DIR.mkdir(exist_ok=True)
         key  = hashlib.md5(url.encode()).hexdigest()
